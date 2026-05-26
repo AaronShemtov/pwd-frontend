@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Generator — pwd.1ms.my</title>
+    <meta name="description" content="Client-side cryptographic password generator. Runs entirely in your browser using window.crypto — nothing is sent over the network.">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <button id="theme-toggle" aria-label="Toggle dark/light theme" title="Toggle theme">
+        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
+
+    <main class="container">
+        <header class="header">
+            <h1 class="name">Password Generator</h1>
+            <p class="title">Client-side · cryptographically secure · zero network</p>
+        </header>
+
+        <!-- OUTPUT PANEL — generated password(s) + actions + entropy meter -->
+        <section class="panel output-panel">
+            <div id="output-area" class="output-area" aria-live="polite">
+                <!-- populated by script.js -->
+            </div>
+            <div class="output-actions">
+                <button id="copy-btn" class="btn btn-primary" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span id="copy-label">Copy</span>
+                </button>
+                <button id="regen-btn" class="btn btn-secondary" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    <span>Regenerate</span>
+                </button>
+                <button id="reveal-btn" class="btn btn-secondary" type="button" aria-pressed="true">
+                    <svg id="eye-on" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg id="eye-off" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <span id="reveal-label">Hide</span>
+                </button>
+            </div>
+            <div class="entropy-row">
+                <div class="entropy-bar" aria-hidden="true">
+                    <div id="entropy-fill" class="entropy-fill"></div>
+                </div>
+                <div class="entropy-meta">
+                    <span id="entropy-bits">— bits of entropy</span>
+                    <span id="entropy-label" class="entropy-label">—</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- LENGTH CONTROLS -->
+        <section class="panel">
+            <h2 class="panel-h">Length</h2>
+            <p class="panel-sub">Common choices with the typical use case on the right.</p>
+            <div class="length-grid">
+                <button type="button" class="length-btn" data-len="8"><span class="len-num">8</span><span class="len-hint">legacy / 8-char limits</span></button>
+                <button type="button" class="length-btn" data-len="12"><span class="len-num">12</span><span class="len-hint">consumer baseline</span></button>
+                <button type="button" class="length-btn is-active" data-len="16"><span class="len-num">16</span><span class="len-hint">recommended default</span></button>
+                <button type="button" class="length-btn" data-len="20"><span class="len-num">20</span><span class="len-hint">important accounts</span></button>
+                <button type="button" class="length-btn" data-len="24"><span class="len-num">24</span><span class="len-hint">master password</span></button>
+                <button type="button" class="length-btn" data-len="32"><span class="len-num">32</span><span class="len-hint">DB / API tokens</span></button>
+                <button type="button" class="length-btn" data-len="48"><span class="len-num">48</span><span class="len-hint">application secrets</span></button>
+                <button type="button" class="length-btn" data-len="64"><span class="len-num">64</span><span class="len-hint">crypto-grade</span></button>
+            </div>
+            <div class="custom-length">
+                <label for="custom-len">Custom length:</label>
+                <input id="custom-len" type="number" min="4" max="128" step="1" placeholder="4 – 128">
+                <span class="custom-hint">overrides the buttons above</span>
+            </div>
+        </section>
+
+        <!-- CHARACTER CLASSES -->
+        <section class="panel">
+            <h2 class="panel-h">Characters</h2>
+            <p class="panel-sub">At least one class must be enabled.</p>
+            <div class="checklist">
+                <label class="check-item">
+                    <input type="checkbox" id="opt-upper" checked>
+                    <span class="check-main">Uppercase letters</span>
+                    <span class="check-meta">A – Z</span>
+                </label>
+                <label class="check-item">
+                    <input type="checkbox" id="opt-lower" checked>
+                    <span class="check-main">Lowercase letters</span>
+                    <span class="check-meta">a – z</span>
+                </label>
+                <label class="check-item">
+                    <input type="checkbox" id="opt-digit" checked>
+                    <span class="check-main">Digits</span>
+                    <span class="check-meta">0 – 9</span>
+                </label>
+                <label class="check-item">
+                    <input type="checkbox" id="opt-symbol" checked>
+                    <span class="check-main">Symbols</span>
+                    <span class="check-meta">!@#$%^&amp;*…</span>
+                </label>
+                <label class="check-item">
+                    <input type="checkbox" id="opt-no-ambig">
+                    <span class="check-main">Exclude ambiguous</span>
+                    <span class="check-meta">0 O 1 l I</span>
+                </label>
+                <label class="check-item">
+                    <input type="checkbox" id="opt-no-dbunfriendly">
+                    <span class="check-main">Exclude DB-unfriendly</span>
+                    <span class="check-meta">' " \ ; $ ` &amp;</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- BATCH GENERATION -->
+        <section class="panel">
+            <h2 class="panel-h">Generate multiple at once</h2>
+            <p class="panel-sub">Useful when provisioning several accounts or services in one go.</p>
+            <div class="batch-grid">
+                <button type="button" class="batch-btn is-active" data-count="1">1</button>
+                <button type="button" class="batch-btn" data-count="5">5</button>
+                <button type="button" class="batch-btn" data-count="10">10</button>
+                <button type="button" class="batch-btn" data-count="20">20</button>
+            </div>
+        </section>
+
+        <!-- PRIVACY NOTICE -->
+        <section class="panel privacy-panel">
+            <h2 class="panel-h">Privacy</h2>
+            <p>This page generates passwords entirely in your browser using <code>window.crypto.getRandomValues()</code> — a cryptographically secure source backed by your operating system's CSPRNG. Nothing is sent over the network. No analytics, no telemetry, no cookies. The page itself is served as static HTML/CSS/JS from a private nginx container.</p>
+            <p>The source code is public — verify the claim:
+                <a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">github.com/AaronShemtov/pwd-frontend</a>
+            </p>
+        </section>
+
+        <footer class="footer">
+            <p>
+                <a href="https://1ms.my">← 1ms.my</a>
+                &nbsp;·&nbsp;
+                <a href="https://cv.1ms.my">cv.1ms.my</a>
+                &nbsp;·&nbsp;
+                <a href="https://infra.1ms.my">infra.1ms.my →</a>
+            </p>
+        </footer>
+    </main>
+
+    <script src="/script.js"></script>
+</body>
+</html>
