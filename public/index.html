@@ -1,172 +1,533 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Generator — pwd.1ms.my</title>
-    <meta name="description" content="Client-side cryptographic password generator. Runs entirely in your browser using window.crypto — nothing is sent over the network.">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/styles.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>pwd — Password Generator</title>
+<meta name="description" content="Client-side cryptographic password generator. Runs entirely in your browser using window.crypto — nothing is sent over the network." />
+<script>
+  (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+</script>
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/blueprint.css" />
+<style>
+  /* ====== Pwd-specific extensions ====== */
+  .pwd-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    padding: 32px; margin: 28px 0 0;
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    position: relative;
+  }
+  .pwd-card::before, .pwd-card::after {
+    content: ""; position: absolute; width: 12px; height: 12px;
+    border-color: var(--accent); border-style: solid; border-width: 0;
+  }
+  .pwd-card::before { top: -1px; left: -1px; border-top-width: 1.5px; border-left-width: 1.5px; }
+  .pwd-card::after  { bottom: -1px; right: -1px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+
+  .output-block {
+    background: var(--code-bg); color: var(--code-ink);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 22px;
+    font-family: var(--mono); font-size: 16px; line-height: 1.55;
+    word-break: break-all; min-height: 3em;
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative;
+  }
+  .output-block .pwd-row {
+    user-select: all;
+    transition: filter 0.15s;
+  }
+  .output-block .pwd-row.hidden { filter: blur(7px); }
+  .output-block .pwd-error { color: var(--danger); font-size: 14px; font-style: italic; }
+
+  .output-actions {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .action-btn {
+    padding: 8px 14px; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 5px; font-family: var(--mono); font-size: 12.5px;
+    color: var(--ink); cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary {
+    background: var(--accent); color: white; border-color: var(--accent);
+  }
+  .action-btn.primary:hover { background: color-mix(in oklab, var(--accent) 85%, black); }
+  html[data-theme="dark"] .action-btn.primary { color: var(--bg); }
+  .action-btn.copied { background: var(--live); border-color: var(--live); color: white; }
+  .action-btn svg { width: 13px; height: 13px; }
+
+  /* ====== Entropy meter ====== */
+  .entropy-row {
+    margin-top: 18px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .entropy-bar {
+    height: 6px; background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden;
+  }
+  .entropy-fill {
+    height: 100%; width: 0; background: var(--accent);
+    transition: width 0.3s, background 0.3s;
+  }
+  .entropy-fill.vweak     { background: var(--danger); }
+  .entropy-fill.weak      { background: var(--warn); }
+  .entropy-fill.mod       { background: #b08800; }
+  .entropy-fill.strong    { background: var(--live); }
+  .entropy-fill.excellent { background: #2da44e; }
+  .entropy-meta {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11.5px; color: var(--mute);
+  }
+  .entropy-meta .label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .entropy-meta .label.vweak     { color: var(--danger); }
+  .entropy-meta .label.weak      { color: var(--warn); }
+  .entropy-meta .label.mod       { color: #b08800; }
+  .entropy-meta .label.strong    { color: var(--live); }
+  .entropy-meta .label.excellent { color: #2da44e; }
+
+  /* ====== Control sections ====== */
+  .ctrl-section { margin-top: 28px; }
+  .ctrl-label {
+    font-family: var(--mono); font-size: 11px; color: var(--mute);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+    display: block;
+  }
+  .ctrl-sub {
+    font-family: var(--mono); font-size: 11.5px; color: var(--mute);
+    margin: -6px 0 12px; line-height: 1.4;
+  }
+
+  /* Length buttons grid */
+  .len-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px;
+  }
+  .len-btn {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 6px; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    font-family: var(--mono);
+  }
+  .len-btn:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent-soft) 30%, var(--paper)); }
+  .len-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  html[data-theme="dark"] .len-btn.active { color: var(--bg); }
+  .len-btn .n { font-size: 16px; font-weight: 600; }
+  .len-btn .hint { font-size: 10.5px; color: var(--mute); margin-top: 2px; line-height: 1.2; }
+  .len-btn.active .hint { color: inherit; opacity: 0.8; }
+
+  .custom-len {
+    margin-top: 10px; display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 12px; color: var(--mute);
+    flex-wrap: wrap;
+  }
+  .custom-len input {
+    width: 100px; padding: 6px 10px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 5px;
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+  }
+  .custom-len input:focus { outline: none; border-color: var(--accent); }
+
+  /* Checklist for char classes */
+  .checklist {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px;
+  }
+  .check {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    cursor: pointer; transition: all 0.15s; font-family: var(--mono); font-size: 13px;
+  }
+  .check:hover { border-color: var(--accent); }
+  .check input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+  .check .main { flex: 1; color: var(--ink); }
+  .check .meta { font-size: 11px; color: var(--mute); }
+
+  /* Batch */
+  .batch-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 320px;
+  }
+  .batch-btn {
+    padding: 10px 0; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 5px; cursor: pointer; transition: all 0.15s;
+    font-family: var(--mono); font-size: 13.5px; font-weight: 600; color: var(--ink);
+  }
+  .batch-btn:hover { border-color: var(--accent); }
+  .batch-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  html[data-theme="dark"] .batch-btn.active { color: var(--bg); }
+</style>
 </head>
 <body>
-    <button id="theme-toggle" aria-label="Toggle dark/light theme" title="Toggle theme">
-        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+
+<div class="ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-left">
+      <span class="brand">Aaron Shemtov <span style="color:var(--mute)">· password generator</span></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <nav class="ribbon-nav">
+        <a href="https://1ms.my/">1ms.my</a>
+        <a href="https://cv.1ms.my/">cv</a>
+        <a href="https://infra.1ms.my/">platform</a>
+        <a href="https://pwd.1ms.my/" class="current">pwd</a>
+      </nav>
+      <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
-    </button>
+      </button>
+    </div>
+  </div>
+</div>
 
-    <main class="container">
-        <header class="header">
-            <h1 class="name">Password Generator</h1>
-            <p class="title">Client-side · cryptographically secure · zero network</p>
-        </header>
+<main class="wrap">
 
-        <!-- OUTPUT PANEL — generated password(s) + actions + entropy meter -->
-        <section class="panel output-panel">
-            <div id="output-area" class="output-area" aria-live="polite">
-                <!-- populated by script.js -->
-            </div>
-            <div class="output-actions">
-                <button id="copy-btn" class="btn btn-primary" type="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <span id="copy-label">Copy</span>
-                </button>
-                <button id="regen-btn" class="btn btn-secondary" type="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <polyline points="1 20 1 14 7 14"></polyline>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
-                    <span>Regenerate</span>
-                </button>
-                <button id="reveal-btn" class="btn btn-secondary" type="button" aria-pressed="true">
-                    <svg id="eye-on" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    <svg id="eye-off" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                    <span id="reveal-label">Hide</span>
-                </button>
-            </div>
-            <div class="entropy-row">
-                <div class="entropy-bar" aria-hidden="true">
-                    <div id="entropy-fill" class="entropy-fill"></div>
-                </div>
-                <div class="entropy-meta">
-                    <span id="entropy-bits">— bits of entropy</span>
-                    <span id="entropy-label" class="entropy-label">—</span>
-                </div>
-            </div>
-        </section>
+  <section class="hero">
+    <div class="crumbs">
+      <span>~/aaronshemtov</span><span class="sep">/</span><span>password-generator</span>
+    </div>
 
-        <!-- LENGTH CONTROLS -->
-        <section class="panel">
-            <h2 class="panel-h">Length</h2>
-            <p class="panel-sub">Common choices with the typical use case on the right.</p>
-            <div class="length-grid">
-                <button type="button" class="length-btn" data-len="8"><span class="len-num">8</span><span class="len-hint">legacy / 8-char limits</span></button>
-                <button type="button" class="length-btn" data-len="12"><span class="len-num">12</span><span class="len-hint">consumer baseline</span></button>
-                <button type="button" class="length-btn is-active" data-len="16"><span class="len-num">16</span><span class="len-hint">recommended default</span></button>
-                <button type="button" class="length-btn" data-len="20"><span class="len-num">20</span><span class="len-hint">important accounts</span></button>
-                <button type="button" class="length-btn" data-len="24"><span class="len-num">24</span><span class="len-hint">master password</span></button>
-                <button type="button" class="length-btn" data-len="32"><span class="len-num">32</span><span class="len-hint">DB / API tokens</span></button>
-                <button type="button" class="length-btn" data-len="48"><span class="len-num">48</span><span class="len-hint">application secrets</span></button>
-                <button type="button" class="length-btn" data-len="64"><span class="len-num">64</span><span class="len-hint">crypto-grade</span></button>
-            </div>
-            <div class="custom-length">
-                <label for="custom-len">Custom length:</label>
-                <input id="custom-len" type="number" min="4" max="128" step="1" placeholder="4 – 128">
-                <span class="custom-hint">overrides the buttons above</span>
-            </div>
-        </section>
+    <h1 class="title"><span class="lt">/</span>pwd</h1>
+    <div class="title-tag">window.crypto.getRandomValues(...)<span class="blink"></span></div>
 
-        <!-- CHARACTER CLASSES -->
-        <section class="panel">
-            <h2 class="panel-h">Characters</h2>
-            <p class="panel-sub">At least one class must be enabled.</p>
-            <div class="checklist">
-                <label class="check-item">
-                    <input type="checkbox" id="opt-upper" checked>
-                    <span class="check-main">Uppercase letters</span>
-                    <span class="check-meta">A – Z</span>
-                </label>
-                <label class="check-item">
-                    <input type="checkbox" id="opt-lower" checked>
-                    <span class="check-main">Lowercase letters</span>
-                    <span class="check-meta">a – z</span>
-                </label>
-                <label class="check-item">
-                    <input type="checkbox" id="opt-digit" checked>
-                    <span class="check-main">Digits</span>
-                    <span class="check-meta">0 – 9</span>
-                </label>
-                <label class="check-item">
-                    <input type="checkbox" id="opt-symbol" checked>
-                    <span class="check-main">Symbols</span>
-                    <span class="check-meta">!@#$%^&amp;*…</span>
-                </label>
-                <label class="check-item">
-                    <input type="checkbox" id="opt-no-ambig">
-                    <span class="check-main">Exclude ambiguous</span>
-                    <span class="check-meta">0 O 1 l I</span>
-                </label>
-                <label class="check-item">
-                    <input type="checkbox" id="opt-no-dbunfriendly">
-                    <span class="check-main">Exclude DB-unfriendly</span>
-                    <span class="check-meta">' " \ ; $ ` &amp;</span>
-                </label>
-            </div>
-        </section>
+    <p class="lede">
+      A <strong>cryptographic password generator</strong> that runs entirely in your browser. Nothing is sent over the network. The randomness source is <code>window.crypto.getRandomValues()</code> — the browser CSPRNG backed by your operating system. No analytics, no telemetry, no cookies.
+    </p>
 
-        <!-- BATCH GENERATION -->
-        <section class="panel">
-            <h2 class="panel-h">Generate multiple at once</h2>
-            <p class="panel-sub">Useful when provisioning several accounts or services in one go.</p>
-            <div class="batch-grid">
-                <button type="button" class="batch-btn is-active" data-count="1">1</button>
-                <button type="button" class="batch-btn" data-count="5">5</button>
-                <button type="button" class="batch-btn" data-count="10">10</button>
-                <button type="button" class="batch-btn" data-count="20">20</button>
-            </div>
-        </section>
+    <div class="tag-row">
+      <span class="tag-pill">client-side only</span>
+      <span class="tag-pill">csprng</span>
+      <span class="tag-pill">rejection sampling</span>
+      <span class="tag-pill">no network</span>
+      <span class="tag-pill">no logs</span>
+    </div>
 
-        <!-- PRIVACY NOTICE -->
-        <section class="panel privacy-panel">
-            <h2 class="panel-h">Privacy</h2>
-            <p>This page generates passwords entirely in your browser using <code>window.crypto.getRandomValues()</code> — a cryptographically secure source backed by your operating system's CSPRNG. Nothing is sent over the network. No analytics, no telemetry, no cookies. The page itself is served as static HTML/CSS/JS from a private nginx container.</p>
-            <p>The source code is public — verify the claim:
-                <a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">github.com/AaronShemtov/pwd-frontend</a>
-            </p>
-        </section>
+    <!-- GENERATOR CARD -->
+    <div class="pwd-card">
+      <div id="output-area" class="output-block" aria-live="polite"></div>
 
-        <footer class="footer">
-            <p>
-                <a href="https://1ms.my">← 1ms.my</a>
-                &nbsp;·&nbsp;
-                <a href="https://cv.1ms.my">cv.1ms.my</a>
-                &nbsp;·&nbsp;
-                <a href="https://infra.1ms.my">infra.1ms.my →</a>
-            </p>
-        </footer>
-    </main>
+      <div class="output-actions">
+        <button id="copy-btn" class="action-btn primary" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="copy-label">Copy</span>
+        </button>
+        <button id="regen-btn" class="action-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span>Regenerate</span>
+        </button>
+        <button id="reveal-btn" class="action-btn" type="button" aria-pressed="true">
+          <svg id="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg id="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+          <span id="reveal-label">Hide</span>
+        </button>
+      </div>
 
-    <script src="/script.js"></script>
+      <div class="entropy-row">
+        <div class="entropy-bar"><div id="entropy-fill" class="entropy-fill"></div></div>
+        <div class="entropy-meta">
+          <span id="entropy-bits">— bits of entropy</span>
+          <span id="entropy-label" class="label">—</span>
+        </div>
+      </div>
+
+      <!-- LENGTH -->
+      <div class="ctrl-section">
+        <span class="ctrl-label">Length</span>
+        <p class="ctrl-sub">▸ Common choices with the typical use case on the right.</p>
+        <div class="len-grid">
+          <button type="button" class="len-btn" data-len="8"><span class="n">8</span><span class="hint">legacy / 8-char limits</span></button>
+          <button type="button" class="len-btn" data-len="12"><span class="n">12</span><span class="hint">consumer baseline</span></button>
+          <button type="button" class="len-btn active" data-len="16"><span class="n">16</span><span class="hint">recommended</span></button>
+          <button type="button" class="len-btn" data-len="20"><span class="n">20</span><span class="hint">important accounts</span></button>
+          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">master password</span></button>
+          <button type="button" class="len-btn" data-len="32"><span class="n">32</span><span class="hint">DB / API tokens</span></button>
+          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">application secrets</span></button>
+          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">crypto-grade</span></button>
+        </div>
+        <div class="custom-len">
+          <label for="custom-len-input">Custom:</label>
+          <input id="custom-len-input" type="number" min="4" max="128" step="1" placeholder="4 – 128" />
+          <span>overrides the buttons above</span>
+        </div>
+      </div>
+
+      <!-- CHARACTERS -->
+      <div class="ctrl-section">
+        <span class="ctrl-label">Characters</span>
+        <p class="ctrl-sub">▸ At least one class must be enabled.</p>
+        <div class="checklist">
+          <label class="check"><input type="checkbox" id="opt-upper" checked /><span class="main">Uppercase letters</span><span class="meta">A – Z</span></label>
+          <label class="check"><input type="checkbox" id="opt-lower" checked /><span class="main">Lowercase letters</span><span class="meta">a – z</span></label>
+          <label class="check"><input type="checkbox" id="opt-digit" checked /><span class="main">Digits</span><span class="meta">0 – 9</span></label>
+          <label class="check"><input type="checkbox" id="opt-symbol" checked /><span class="main">Symbols</span><span class="meta">!@#$%^&amp;*…</span></label>
+          <label class="check"><input type="checkbox" id="opt-no-ambig" /><span class="main">Exclude ambiguous</span><span class="meta">0 O 1 l I</span></label>
+          <label class="check"><input type="checkbox" id="opt-no-dbunfriendly" /><span class="main">Exclude DB-unfriendly</span><span class="meta">' " \ ; $ ` &amp;</span></label>
+        </div>
+      </div>
+
+      <!-- BATCH -->
+      <div class="ctrl-section">
+        <span class="ctrl-label">Generate multiple at once</span>
+        <p class="ctrl-sub">▸ Useful when provisioning several accounts or services in one go.</p>
+        <div class="batch-grid">
+          <button type="button" class="batch-btn active" data-count="1">1</button>
+          <button type="button" class="batch-btn" data-count="5">5</button>
+          <button type="button" class="batch-btn" data-count="10">10</button>
+          <button type="button" class="batch-btn" data-count="20">20</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIVACY + CRYPTO NOTES -->
+  <section class="block">
+    <div class="sec-head">
+      <span class="sec-num">01 ·</span>
+      <h2 class="sec-title">Privacy &amp; cryptography</h2>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Privacy</h4>
+        <ul>
+          <li><strong>Client-side only</strong> — the page never sends generated passwords anywhere. Open DevTools / Network and verify yourself.<span class="why">no XHR, no fetch, no beacon, no third-party scripts</span></li>
+          <li><strong>No analytics</strong> — no Google Analytics, no Plausible, no fingerprinting, no cookies.</li>
+          <li><strong>No logs</strong> — the nginx that serves this page logs HTTP requests (path, status, user agent), not anything you type into the form.</li>
+          <li><strong>Source is public</strong> — verify the claim:<br><a href="https://github.com/AaronShemtov/pwd-frontend">github.com/AaronShemtov/pwd-frontend</a></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Cryptography</h4>
+        <ul>
+          <li><strong>CSPRNG</strong> — randomness is sourced from <code>window.crypto.getRandomValues()</code>, backed by the OS-level entropy pool (Linux <code>/dev/urandom</code>, Windows <code>BCryptGenRandom</code>).<span class="why">never Math.random — that's a PRNG, predictable after a few samples</span></li>
+          <li><strong>Uniform distribution</strong> — index into the charset uses rejection sampling against uint32. No modulo bias.<span class="why">`random % N` is biased whenever N doesn't divide 2³²</span></li>
+          <li><strong>Class guarantee</strong> — if a character class is selected but happened to be absent in the generated string, a random position is replaced with one from that class.</li>
+          <li><strong>Entropy</strong> — calculated as log₂(charset_size) × length, the theoretical maximum for uniform random.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>
+      <span class="tag">all generation happens in your browser.</span>
+      <a href="https://infra.1ms.my/">see the architecture →</a>
+    </div>
+    <div>
+      <a href="https://github.com/AaronShemtov/pwd-frontend">source</a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  // ===== Theme toggle =====
+  var sun = document.getElementById('icon-sun');
+  var moon = document.getElementById('icon-moon');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    if (t === 'dark') { sun.style.display = ''; moon.style.display = 'none'; }
+    else              { sun.style.display = 'none'; moon.style.display = ''; }
+    try { localStorage.setItem('theme', t); } catch(e){}
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  document.getElementById('theme-btn').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(cur === 'light' ? 'dark' : 'light');
+  });
+
+  // ===== Password generator =====
+  var CHARS = {
+    upper:  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    lower:  'abcdefghijklmnopqrstuvwxyz',
+    digit:  '0123456789',
+    symbol: '!@#$%^&*()-_=+[]{};:,.<>?/~`|\\\'"',
+  };
+  var AMBIG = new Set('0O1lI|'.split(''));
+  var DBUF = new Set('\'"\\;$`&'.split(''));
+
+  var $ = function(id){ return document.getElementById(id); };
+  var output = $('output-area');
+  var copyBtn = $('copy-btn'); var copyLabel = $('copy-label');
+  var regenBtn = $('regen-btn');
+  var revealBtn = $('reveal-btn'); var revealLabel = $('reveal-label');
+  var eyeOn = $('eye-on'); var eyeOff = $('eye-off');
+  var entropyFill = $('entropy-fill');
+  var entropyBits = $('entropy-bits');
+  var entropyLabel = $('entropy-label');
+  var customLenInput = $('custom-len-input');
+  var lenBtns = document.querySelectorAll('.len-btn');
+  var batchBtns = document.querySelectorAll('.batch-btn');
+
+  var optUpper = $('opt-upper'), optLower = $('opt-lower'), optDigit = $('opt-digit'), optSymbol = $('opt-symbol');
+  var optNoAmbig = $('opt-no-ambig'), optNoDb = $('opt-no-dbunfriendly');
+
+  var length = 16, batch = 1, revealed = true;
+
+  function buildCharset() {
+    var chars = '';
+    if (optUpper.checked)  chars += CHARS.upper;
+    if (optLower.checked)  chars += CHARS.lower;
+    if (optDigit.checked)  chars += CHARS.digit;
+    if (optSymbol.checked) chars += CHARS.symbol;
+    var arr = chars.split('');
+    if (optNoAmbig.checked) arr = arr.filter(function(c){ return !AMBIG.has(c); });
+    if (optNoDb.checked)    arr = arr.filter(function(c){ return !DBUF.has(c); });
+    return Array.from(new Set(arr));
+  }
+
+  function uniformInt(max) {
+    var limit = Math.floor(0x100000000 / max) * max;
+    var buf = new Uint32Array(1);
+    while (true) {
+      window.crypto.getRandomValues(buf);
+      if (buf[0] < limit) return buf[0] % max;
+    }
+  }
+
+  function genOne(charset, n) {
+    var out = new Array(n);
+    for (var i = 0; i < n; i++) out[i] = charset[uniformInt(charset.length)];
+    return out.join('');
+  }
+
+  function enforceClasses(pwd, charset) {
+    var classes = [];
+    if (optUpper.checked)  classes.push(CHARS.upper.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
+    if (optLower.checked)  classes.push(CHARS.lower.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
+    if (optDigit.checked)  classes.push(CHARS.digit.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
+    if (optSymbol.checked) classes.push(CHARS.symbol.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
+    var arr = pwd.split('');
+    classes.forEach(function(cls){
+      if (cls.length === 0) return;
+      var has = arr.some(function(c){ return cls.indexOf(c) >= 0; });
+      if (!has) {
+        var pos = uniformInt(arr.length);
+        arr[pos] = cls[uniformInt(cls.length)];
+      }
+    });
+    return arr.join('');
+  }
+
+  function rating(bits) {
+    if (bits < 28)  return { lbl: 'very weak',  pct: 10,  cls: 'vweak' };
+    if (bits < 50)  return { lbl: 'weak',       pct: 30,  cls: 'weak' };
+    if (bits < 72)  return { lbl: 'moderate',   pct: 55,  cls: 'mod' };
+    if (bits < 128) return { lbl: 'strong',     pct: 80,  cls: 'strong' };
+    return                 { lbl: 'excellent',  pct: 100, cls: 'excellent' };
+  }
+
+  function render(passwords, csize) {
+    output.innerHTML = '';
+    passwords.forEach(function(p){
+      var row = document.createElement('div');
+      row.className = 'pwd-row' + (revealed ? '' : ' hidden');
+      row.textContent = p;
+      output.appendChild(row);
+    });
+    var bits = csize > 1 ? Math.log2(csize) * length : 0;
+    var r = rating(bits);
+    entropyFill.style.width = r.pct + '%';
+    entropyFill.className = 'entropy-fill ' + r.cls;
+    entropyBits.textContent = bits.toFixed(0) + ' bits of entropy';
+    entropyLabel.textContent = r.lbl;
+    entropyLabel.className = 'label ' + r.cls;
+  }
+
+  function generate() {
+    var charset = buildCharset();
+    if (charset.length === 0) {
+      output.innerHTML = '<div class="pwd-error">Select at least one character class.</div>';
+      entropyFill.style.width = '0%';
+      entropyBits.textContent = '— bits of entropy';
+      entropyLabel.textContent = '—';
+      entropyLabel.className = 'label';
+      return;
+    }
+    var results = [];
+    for (var i = 0; i < batch; i++) {
+      var p = genOne(charset, length);
+      p = enforceClasses(p, charset);
+      results.push(p);
+    }
+    render(results, charset.length);
+  }
+
+  lenBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      length = parseInt(btn.dataset.len, 10);
+      lenBtns.forEach(function(b){ b.classList.toggle('active', b === btn); });
+      customLenInput.value = '';
+      generate();
+    });
+  });
+  customLenInput.addEventListener('input', function(){
+    var v = parseInt(customLenInput.value, 10);
+    if (!isNaN(v) && v >= 4 && v <= 128) {
+      length = v;
+      lenBtns.forEach(function(b){ b.classList.remove('active'); });
+      generate();
+    }
+  });
+  [optUpper, optLower, optDigit, optSymbol, optNoAmbig, optNoDb].forEach(function(el){
+    el.addEventListener('change', generate);
+  });
+  batchBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      batch = parseInt(btn.dataset.count, 10);
+      batchBtns.forEach(function(b){ b.classList.toggle('active', b === btn); });
+      generate();
+    });
+  });
+  regenBtn.addEventListener('click', generate);
+  copyBtn.addEventListener('click', async function(){
+    var rows = output.querySelectorAll('.pwd-row');
+    if (rows.length === 0) return;
+    var text = Array.from(rows).map(function(r){ return r.textContent; }).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      copyLabel.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(function(){ copyLabel.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1500);
+    } catch(e) {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch(_) {}
+      document.body.removeChild(ta);
+      copyLabel.textContent = 'Copied!';
+      setTimeout(function(){ copyLabel.textContent = 'Copy'; }, 1500);
+    }
+  });
+  revealBtn.addEventListener('click', function(){
+    revealed = !revealed;
+    output.querySelectorAll('.pwd-row').forEach(function(r){ r.classList.toggle('hidden', !revealed); });
+    revealLabel.textContent = revealed ? 'Hide' : 'Show';
+    eyeOn.style.display = revealed ? '' : 'none';
+    eyeOff.style.display = revealed ? 'none' : '';
+  });
+
+  generate();
+</script>
 </body>
 </html>
