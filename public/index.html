@@ -1,183 +1,36 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="ru" data-theme="light">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>pwd — Password Generator</title>
-<meta name="description" content="Client-side cryptographic password generator. Runs entirely in your browser using window.crypto — nothing is sent over the network." />
-<script>
-  (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
-</script>
+<title>pwd — secrets toolkit for DevOps &amp; Kubernetes</title>
+<meta name="description" content="Пароли, токены, htpasswd для Envoy и ArgoCD, сборка и разбор Kubernetes Secret, разбор JWT, контрольные суммы. Всё считается в браузере — ни один секрет не уходит в сеть." />
+<meta name="color-scheme" content="light dark" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/blueprint.css" />
-<style>
-  /* ====== Pwd-specific extensions ====== */
-  .pwd-card {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    padding: 32px; margin: 28px 0 0;
-    background-image:
-      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-    background-size: 24px 24px;
-    position: relative;
-  }
-  .pwd-card::before, .pwd-card::after {
-    content: ""; position: absolute; width: 12px; height: 12px;
-    border-color: var(--accent); border-style: solid; border-width: 0;
-  }
-  .pwd-card::before { top: -1px; left: -1px; border-top-width: 1.5px; border-left-width: 1.5px; }
-  .pwd-card::after  { bottom: -1px; right: -1px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
-
-  .output-block {
-    background: var(--code-bg); color: var(--code-ink);
-    border: 1px solid var(--line); border-radius: 8px;
-    padding: 18px 22px;
-    font-family: var(--mono); font-size: 16px; line-height: 1.55;
-    word-break: break-all; min-height: 3em;
-    display: flex; flex-direction: column; gap: 6px;
-    position: relative;
-  }
-  .output-block .pwd-row {
-    user-select: all;
-    transition: filter 0.15s;
-  }
-  .output-block .pwd-row.hidden { filter: blur(7px); }
-  .output-block .pwd-error { color: var(--danger); font-size: 14px; font-style: italic; }
-
-  .output-actions {
-    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
-  }
-  .action-btn {
-    padding: 8px 14px; background: var(--paper); border: 1px solid var(--line);
-    border-radius: 5px; font-family: var(--mono); font-size: 12.5px;
-    color: var(--ink); cursor: pointer; transition: all 0.15s;
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .action-btn.primary {
-    background: var(--accent); color: white; border-color: var(--accent);
-  }
-  .action-btn.primary:hover { background: color-mix(in oklab, var(--accent) 85%, black); }
-  html[data-theme="dark"] .action-btn.primary { color: var(--bg); }
-  .action-btn.copied { background: var(--live); border-color: var(--live); color: white; }
-  .action-btn svg { width: 13px; height: 13px; }
-
-  /* ====== Entropy meter ====== */
-  .entropy-row {
-    margin-top: 18px; display: flex; flex-direction: column; gap: 6px;
-  }
-  .entropy-bar {
-    height: 6px; background: var(--paper-2); border: 1px solid var(--line);
-    border-radius: 999px; overflow: hidden;
-  }
-  .entropy-fill {
-    height: 100%; width: 0; background: var(--accent);
-    transition: width 0.3s, background 0.3s;
-  }
-  .entropy-fill.vweak     { background: var(--danger); }
-  .entropy-fill.weak      { background: var(--warn); }
-  .entropy-fill.mod       { background: #b08800; }
-  .entropy-fill.strong    { background: var(--live); }
-  .entropy-fill.excellent { background: #2da44e; }
-  .entropy-meta {
-    display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 11.5px; color: var(--mute);
-  }
-  .entropy-meta .label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-  .entropy-meta .label.vweak     { color: var(--danger); }
-  .entropy-meta .label.weak      { color: var(--warn); }
-  .entropy-meta .label.mod       { color: #b08800; }
-  .entropy-meta .label.strong    { color: var(--live); }
-  .entropy-meta .label.excellent { color: #2da44e; }
-
-  /* ====== Control sections ====== */
-  .ctrl-section { margin-top: 28px; }
-  .ctrl-label {
-    font-family: var(--mono); font-size: 11px; color: var(--mute);
-    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
-    display: block;
-  }
-  .ctrl-sub {
-    font-family: var(--mono); font-size: 11.5px; color: var(--mute);
-    margin: -6px 0 12px; line-height: 1.4;
-  }
-
-  /* Length buttons grid */
-  .len-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px;
-  }
-  .len-btn {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 10px 6px; background: var(--paper); border: 1px solid var(--line);
-    border-radius: 6px; cursor: pointer; transition: all 0.15s;
-    font-family: var(--mono);
-  }
-  .len-btn:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent-soft) 30%, var(--paper)); }
-  .len-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-  html[data-theme="dark"] .len-btn.active { color: var(--bg); }
-  .len-btn .n { font-size: 16px; font-weight: 600; }
-  .len-btn .hint { font-size: 10.5px; color: var(--mute); margin-top: 2px; line-height: 1.2; }
-  .len-btn.active .hint { color: inherit; opacity: 0.8; }
-
-  .custom-len {
-    margin-top: 10px; display: flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 12px; color: var(--mute);
-    flex-wrap: wrap;
-  }
-  .custom-len input {
-    width: 100px; padding: 6px 10px; background: var(--bg);
-    border: 1px solid var(--line); border-radius: 5px;
-    font-family: var(--mono); font-size: 13px; color: var(--ink);
-  }
-  .custom-len input:focus { outline: none; border-color: var(--accent); }
-
-  /* Checklist for char classes */
-  .checklist {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px;
-  }
-  .check {
-    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
-    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
-    cursor: pointer; transition: all 0.15s; font-family: var(--mono); font-size: 13px;
-  }
-  .check:hover { border-color: var(--accent); }
-  .check input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
-  .check .main { flex: 1; color: var(--ink); }
-  .check .meta { font-size: 11px; color: var(--mute); }
-
-  /* Batch */
-  .batch-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 320px;
-  }
-  .batch-btn {
-    padding: 10px 0; background: var(--paper); border: 1px solid var(--line);
-    border-radius: 5px; cursor: pointer; transition: all 0.15s;
-    font-family: var(--mono); font-size: 13.5px; font-weight: 600; color: var(--ink);
-  }
-  .batch-btn:hover { border-color: var(--accent); }
-  .batch-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-  html[data-theme="dark"] .batch-btn.active { color: var(--bg); }
-</style>
+<link rel="stylesheet" href="/pwd.css" />
+<!-- Подключается синхронно: тема должна встать до первой отрисовки. -->
+<script src="/js/theme.js"></script>
 </head>
 <body>
 
 <div class="ribbon">
   <div class="ribbon-inner">
     <div class="ribbon-left">
-      <span class="brand">Aaron Shemtov <span style="color:var(--mute)">· password generator</span></span>
+      <span class="brand">Aaron Shemtov <span class="mute-sep">· secrets toolkit</span></span>
     </div>
-    <div style="display:flex; align-items:center; gap:18px;">
+    <div class="ribbon-right">
       <nav class="ribbon-nav">
         <a href="https://1ms.my/">1ms.my</a>
         <a href="https://cv.1ms.my/">cv</a>
         <a href="https://infra.1ms.my/">platform</a>
         <a href="https://pwd.1ms.my/" class="current">pwd</a>
       </nav>
-      <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
-        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <button class="theme-btn" id="theme-btn" aria-label="Переключить тему" title="Переключить тему" type="button">
+        <svg id="icon-sun" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
         <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -192,104 +45,124 @@
 
   <section class="hero">
     <div class="crumbs">
-      <span>~/aaronshemtov</span><span class="sep">/</span><span>password-generator</span>
+      <span>~/aaronshemtov</span><span class="sep">/</span><span>secrets-toolkit</span>
     </div>
 
     <h1 class="title"><span class="lt">/</span>pwd</h1>
     <div class="title-tag">window.crypto.getRandomValues(...)<span class="blink"></span></div>
 
     <p class="lede">
-      A <strong>cryptographic password generator</strong> that runs entirely in your browser. Nothing is sent over the network. The randomness source is <code>window.crypto.getRandomValues()</code> — the browser CSPRNG backed by your operating system. No analytics, no telemetry, no cookies.
+      Набор инструментов для секретов, которые каждый день нужны в работе с Kubernetes: пароли и токены, <strong>htpasswd для Envoy и ArgoCD</strong>, сборка и разбор <code>Secret</code>, разбор JWT, контрольные суммы. Всё считается прямо в браузере: в коде страницы нет ни одного сетевого вызова, а заголовок <code>Content-Security-Policy</code> запрещает их директивой <code>connect-src 'none'</code> — то есть запрет обеспечивает браузер, а не обещание в тексте.
     </p>
 
     <div class="tag-row">
       <span class="tag-pill">client-side only</span>
       <span class="tag-pill">csprng</span>
       <span class="tag-pill">rejection sampling</span>
-      <span class="tag-pill">no network</span>
-      <span class="tag-pill">no logs</span>
+      <span class="tag-pill">no telemetry</span>
+      <span class="tag-pill">mit licensed</span>
     </div>
 
-    <!-- GENERATOR CARD -->
-    <div class="pwd-card">
-      <div id="output-area" class="output-block" aria-live="polite"></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" type="button" role="tab" data-tab="passwords"><span class="num">01</span>Passwords</button>
+      <button class="tab" type="button" role="tab" data-tab="tokens"><span class="num">02</span>Tokens</button>
+      <button class="tab" type="button" role="tab" data-tab="basicauth"><span class="num">03</span>Basic auth</button>
+      <button class="tab" type="button" role="tab" data-tab="kubernetes"><span class="num">04</span>Kubernetes</button>
+      <button class="tab" type="button" role="tab" data-tab="hashes"><span class="num">05</span>Hashes</button>
+    </div>
+
+    <!-- ============ 01 · PASSWORDS ============ -->
+    <section class="pwd-card panel-tool" id="panel-passwords" data-panel="passwords">
+      <p class="tool-intro">
+        Случайный пароль из алфавита, который ты задаёшь сам. Индекс в алфавите выбирается <strong>отбраковкой</strong>, а не остатком от деления, поэтому символы распределены равномерно и смещения по модулю нет.
+      </p>
+
+      <div id="pw-output" class="output-block" aria-live="polite"></div>
 
       <div class="output-actions">
-        <button id="copy-btn" class="action-btn primary" type="button">
+        <button id="pw-copy" class="action-btn primary" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
-          <span id="copy-label">Copy</span>
+          <span id="pw-copy-label">Copy</span>
         </button>
-        <button id="regen-btn" class="action-btn" type="button">
+        <button id="pw-regen" class="action-btn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
+            <polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
           <span>Regenerate</span>
         </button>
-        <button id="reveal-btn" class="action-btn" type="button" aria-pressed="true">
-          <svg id="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
+        <button id="pw-reveal" class="action-btn" type="button" aria-pressed="true">
+          <svg id="pw-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <svg id="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <svg id="pw-eye-off" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
             <line x1="1" y1="1" x2="23" y2="23"></line>
           </svg>
-          <span id="reveal-label">Hide</span>
+          <span id="pw-reveal-label">Hide</span>
         </button>
       </div>
 
       <div class="entropy-row">
-        <div class="entropy-bar"><div id="entropy-fill" class="entropy-fill"></div></div>
+        <div class="entropy-bar"><div id="pw-entropy-fill" class="entropy-fill"></div></div>
         <div class="entropy-meta">
-          <span id="entropy-bits">— bits of entropy</span>
-          <span id="entropy-label" class="label">—</span>
+          <span id="pw-entropy-bits">— bits of entropy</span>
+          <span id="pw-entropy-label" class="label">—</span>
         </div>
       </div>
 
-      <!-- LENGTH -->
       <div class="ctrl-section">
-        <span class="ctrl-label">Length</span>
-        <p class="ctrl-sub">▸ Common choices with the typical use case on the right.</p>
+        <span class="ctrl-label">Куда поедет пароль</span>
+        <p class="ctrl-sub" id="pw-preset-note">—</p>
+        <div class="preset-grid">
+          <button class="preset-btn" type="button" data-preset="balanced">Balanced</button>
+          <button class="preset-btn" type="button" data-preset="shell">Shell-safe</button>
+          <button class="preset-btn" type="button" data-preset="yaml">YAML-safe</button>
+          <button class="preset-btn" type="button" data-preset="url">URL-safe</button>
+          <button class="preset-btn" type="button" data-preset="db">DB-safe</button>
+          <button class="preset-btn" type="button" data-preset="pin">PIN</button>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Длина</span>
+        <p class="ctrl-sub">▸ Слева число символов, справа типичное применение.</p>
         <div class="len-grid">
-          <button type="button" class="len-btn" data-len="8"><span class="n">8</span><span class="hint">legacy / 8-char limits</span></button>
-          <button type="button" class="len-btn" data-len="12"><span class="n">12</span><span class="hint">consumer baseline</span></button>
-          <button type="button" class="len-btn active" data-len="16"><span class="n">16</span><span class="hint">recommended</span></button>
-          <button type="button" class="len-btn" data-len="20"><span class="n">20</span><span class="hint">important accounts</span></button>
-          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">master password</span></button>
-          <button type="button" class="len-btn" data-len="32"><span class="n">32</span><span class="hint">DB / API tokens</span></button>
-          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">application secrets</span></button>
-          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">crypto-grade</span></button>
+          <button type="button" class="len-btn" data-len="8"><span class="n">8</span><span class="hint">старые ограничения</span></button>
+          <button type="button" class="len-btn" data-len="12"><span class="n">12</span><span class="hint">бытовой минимум</span></button>
+          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">разумный дефолт</span></button>
+          <button type="button" class="len-btn active" data-len="20"><span class="n">20</span><span class="hint">важные аккаунты</span></button>
+          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">мастер-пароль</span></button>
+          <button type="button" class="len-btn" data-len="32"><span class="n">32</span><span class="hint">БД и API-токены</span></button>
+          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">секреты приложений</span></button>
+          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">с запасом</span></button>
         </div>
         <div class="custom-len">
-          <label for="custom-len-input">Custom:</label>
-          <input id="custom-len-input" type="number" min="4" max="128" step="1" placeholder="4 – 128" />
-          <span>overrides the buttons above</span>
+          <label for="pw-custom-len">Своя:</label>
+          <input id="pw-custom-len" class="text-input" type="number" min="4" max="256" step="1" placeholder="4 – 256" />
+          <span>перебивает кнопки выше</span>
         </div>
       </div>
 
-      <!-- CHARACTERS -->
       <div class="ctrl-section">
-        <span class="ctrl-label">Characters</span>
-        <p class="ctrl-sub">▸ At least one class must be enabled.</p>
+        <span class="ctrl-label">Символы</span>
+        <p class="ctrl-sub">▸ Нужен хотя бы один класс. Правка сбрасывает выбранный набор.</p>
         <div class="checklist">
-          <label class="check"><input type="checkbox" id="opt-upper" checked /><span class="main">Uppercase letters</span><span class="meta">A – Z</span></label>
-          <label class="check"><input type="checkbox" id="opt-lower" checked /><span class="main">Lowercase letters</span><span class="meta">a – z</span></label>
-          <label class="check"><input type="checkbox" id="opt-digit" checked /><span class="main">Digits</span><span class="meta">0 – 9</span></label>
-          <label class="check"><input type="checkbox" id="opt-symbol" checked /><span class="main">Symbols</span><span class="meta">!@#$%^&amp;*…</span></label>
-          <label class="check"><input type="checkbox" id="opt-no-ambig" /><span class="main">Exclude ambiguous</span><span class="meta">0 O 1 l I</span></label>
-          <label class="check"><input type="checkbox" id="opt-no-dbunfriendly" /><span class="main">Exclude DB-unfriendly</span><span class="meta">' " \ ; $ ` &amp;</span></label>
+          <label class="check"><input type="checkbox" id="pw-upper" checked /><span class="main">Заглавные</span><span class="meta">A – Z</span></label>
+          <label class="check"><input type="checkbox" id="pw-lower" checked /><span class="main">Строчные</span><span class="meta">a – z</span></label>
+          <label class="check"><input type="checkbox" id="pw-digit" checked /><span class="main">Цифры</span><span class="meta">0 – 9</span></label>
+          <label class="check"><input type="checkbox" id="pw-symbol" checked /><span class="main">Символы</span><span class="meta">!@#$%^&amp;*…</span></label>
+          <label class="check"><input type="checkbox" id="pw-no-ambig" /><span class="main">Без похожих</span><span class="meta">0 O 1 l I</span></label>
+          <label class="check"><input type="checkbox" id="pw-no-db" /><span class="main">Без опасных для БД</span><span class="meta">' " \ ; $ ` &amp;</span></label>
         </div>
       </div>
 
-      <!-- BATCH -->
       <div class="ctrl-section">
-        <span class="ctrl-label">Generate multiple at once</span>
-        <p class="ctrl-sub">▸ Useful when provisioning several accounts or services in one go.</p>
+        <span class="ctrl-label">Сколько сразу</span>
+        <p class="ctrl-sub">▸ Когда заводишь несколько учёток или сервисов за один заход.</p>
         <div class="batch-grid">
           <button type="button" class="batch-btn active" data-count="1">1</button>
           <button type="button" class="batch-btn" data-count="5">5</button>
@@ -297,33 +170,297 @@
           <button type="button" class="batch-btn" data-count="20">20</button>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- ============ 02 · TOKENS ============ -->
+    <section class="pwd-card panel-tool hidden" id="panel-tokens" data-panel="tokens">
+      <p class="tool-intro">
+        Сырые случайные байты — то, что обычно добывают через <code>openssl rand</code>. Подходит для секретов подписи JWT, токенов вебхуков, ключей шифрования и всего, что человек читать не будет.
+      </p>
+
+      <div id="tok-output" class="output-block small" aria-live="polite"></div>
+
+      <div class="output-actions">
+        <button id="tok-copy" class="action-btn primary" type="button"><span id="tok-copy-label">Copy</span></button>
+        <button id="tok-regen" class="action-btn" type="button">Regenerate</button>
+      </div>
+      <div class="entropy-row"><div class="entropy-meta"><span id="tok-meta">—</span></div></div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Сколько байт</span>
+        <div class="len-grid">
+          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">128 бит</span></button>
+          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">192 бита</span></button>
+          <button type="button" class="len-btn active" data-len="32"><span class="n">32</span><span class="hint">256 бит · дефолт</span></button>
+          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">384 бита</span></button>
+          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">512 бит</span></button>
+        </div>
+        <div class="custom-len">
+          <label for="tok-custom">Своё:</label>
+          <input id="tok-custom" class="text-input" type="number" min="4" max="512" step="1" placeholder="4 – 512" />
+          <span>байт</span>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Представление</span>
+        <p class="ctrl-sub">▸ base64url — без символов <code>+</code>, <code>/</code> и <code>=</code>, переживает попадание в URL и в имя переменной окружения.</p>
+        <div class="seg" id="tok-format">
+          <button class="seg-btn active" type="button" data-value="hex">hex</button>
+          <button class="seg-btn" type="button" data-value="base64">base64</button>
+          <button class="seg-btn" type="button" data-value="base64url">base64url</button>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Сколько сразу</span>
+        <div class="batch-grid">
+          <button type="button" class="batch-btn active" data-count="1">1</button>
+          <button type="button" class="batch-btn" data-count="5">5</button>
+          <button type="button" class="batch-btn" data-count="10">10</button>
+          <button type="button" class="batch-btn" data-count="20">20</button>
+        </div>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+        <pre class="out-body" id="tok-cli"></pre>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Идентификаторы</span>
+        <p class="ctrl-sub">▸ UUID v4 — 122 случайных бита. ULID — 48 бит времени плюс 80 случайных, поэтому сортируется по возрастанию времени создания.</p>
+        <div class="seg" id="tok-id-kind">
+          <button class="seg-btn active" type="button" data-value="uuid">UUID v4</button>
+          <button class="seg-btn" type="button" data-value="ulid">ULID</button>
+        </div>
+        <div class="field-row">
+          <label for="tok-id-count">Количество:</label>
+          <input id="tok-id-count" class="text-input" type="number" min="1" max="50" step="1" value="1" />
+        </div>
+        <div id="tok-id-output" class="output-block small" aria-live="polite"></div>
+        <div class="output-actions">
+          <button id="tok-id-copy" class="action-btn primary" type="button"><span id="tok-id-copy-label">Copy</span></button>
+          <button id="tok-id-regen" class="action-btn" type="button">Regenerate</button>
+        </div>
+        <div class="out-block">
+          <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+          <pre class="out-body" id="tok-id-cli"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 · BASIC AUTH ============ -->
+    <section class="pwd-card panel-tool hidden" id="panel-basicauth" data-panel="basicauth">
+      <p class="tool-intro">
+        Строки <code>.htpasswd</code> и готовые команды к ним. Три формата, потому что их требуют разные потребители: <strong>Envoy</strong> понимает только <code>{SHA}</code>, <strong>ArgoCD</strong> ждёт bcrypt в поле <code>admin.password</code>, <strong>nginx и Traefik</strong> — <code>$apr1$</code>. Официальная документация ArgoCD на этом месте предлагает вбить пароль администратора на постороннем сайте; здесь всё считается у тебя в браузере.
+      </p>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Формат хеша</span>
+        <div class="seg" id="ba-format">
+          <button class="seg-btn active" type="button" data-value="sha1">{SHA} · Envoy</button>
+          <button class="seg-btn" type="button" data-value="bcrypt">$2a$ · bcrypt</button>
+          <button class="seg-btn" type="button" data-value="apr1">$apr1$ · nginx</button>
+        </div>
+        <p class="ctrl-sub" id="ba-note">—</p>
+        <div class="field-row hidden" id="ba-cost-wrap">
+          <label for="ba-cost">Стоимость bcrypt:</label>
+          <select id="ba-cost" class="text-input">
+            <option value="8">8 — быстро</option>
+            <option value="10" selected>10 — обычный выбор</option>
+            <option value="12">12 — с запасом</option>
+            <option value="14">14 — медленно, заметно</option>
+          </select>
+          <span>каждый шаг удваивает время подбора и время расчёта</span>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Пользователи</span>
+        <p class="ctrl-sub">▸ Имя чистится до <code>A-Z a-z 0-9 . _ @ -</code>, чтобы строка не сломала формат файла.</p>
+        <div id="ba-rows"></div>
+        <button id="ba-add" class="action-btn" type="button">+ Добавить пользователя</button>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Куда кладём</span>
+        <div class="field-row">
+          <label for="ba-secret">Secret:</label>
+          <input id="ba-secret" class="text-input" type="text" value="basic-auth" />
+          <label for="ba-ns">Namespace:</label>
+          <input id="ba-ns" class="text-input" type="text" value="default" />
+        </div>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head">
+          <span class="lbl">.htpasswd</span>
+          <button id="ba-copy-htpasswd" class="action-btn" type="button"><span id="ba-copy-htpasswd-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="ba-out-htpasswd"></pre>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head">
+          <span class="lbl">kubectl — создать или обновить</span>
+          <button id="ba-copy-cmd" class="action-btn" type="button"><span id="ba-copy-cmd-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="ba-out-cmd"></pre>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head">
+          <span class="lbl">Secret — для гита</span>
+          <button id="ba-copy-yaml" class="action-btn" type="button"><span id="ba-copy-yaml-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="ba-out-yaml"></pre>
+      </div>
+
+      <div class="out-block hidden" id="ba-argo-wrap">
+        <div class="out-head">
+          <span class="lbl">ArgoCD — сменить пароль администратора</span>
+          <button id="ba-copy-argo" class="action-btn" type="button"><span id="ba-copy-argo-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="ba-out-argo"></pre>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+        <pre class="out-body" id="ba-cli"></pre>
+      </div>
+
+      <p class="foot-note">
+        Значения берутся в одинарные кавычки не для красоты: bcrypt и apr1 содержат <code>$</code>, и в двойных кавычках bash попробует раскрыть <code>$2a</code> как переменную. Ещё одна мина — переводы строк: Envoy отвергает <code>.htpasswd</code> с окончаниями <code>CRLF</code>, при этом SecurityPolicy бодро рапортует <code>Accepted: True</code>, а ошибка видна только в логах Envoy. Здесь строки всегда разделены одним <code>LF</code>.
+      </p>
+    </section>
+
+    <!-- ============ 04 · KUBERNETES ============ -->
+    <section class="pwd-card panel-tool hidden" id="panel-kubernetes" data-panel="kubernetes">
+      <p class="tool-intro">
+        Собрать <code>Secret</code> из пар ключ-значение и разобрать его обратно. Плюс разбор JWT — включая токены сервис-аккаунтов, которые обычно смотрят на посторонних сайтах вроде jwt.io.
+      </p>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Собрать Secret</span>
+        <div class="field-row">
+          <label for="k8s-name">Имя:</label>
+          <input id="k8s-name" class="text-input" type="text" value="my-secret" />
+          <label for="k8s-ns">Namespace:</label>
+          <input id="k8s-ns" class="text-input" type="text" value="default" />
+        </div>
+        <div class="field-row">
+          <label class="check"><input type="checkbox" id="k8s-mode-stringdata" /><span class="main">Отдать как stringData</span><span class="meta">без base64, кубер закодирует сам</span></label>
+        </div>
+        <div id="k8s-kv"></div>
+        <button id="k8s-add-kv" class="action-btn" type="button">+ Добавить ключ</button>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head">
+          <span class="lbl">манифест</span>
+          <button id="k8s-copy-yaml" class="action-btn" type="button"><span id="k8s-copy-yaml-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="k8s-out-yaml"></pre>
+      </div>
+
+      <div class="out-block">
+        <div class="out-head">
+          <span class="lbl">kubectl</span>
+          <button id="k8s-copy-cmd" class="action-btn" type="button"><span id="k8s-copy-cmd-label">Copy</span></button>
+        </div>
+        <pre class="out-body" id="k8s-out-cmd"></pre>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Разобрать Secret</span>
+        <p class="ctrl-sub">▸ Вставь вывод <code>kubectl get secret … -o yaml</code> целиком — или просто одну строку base64. Разбираются блоки <code>data</code> и <code>stringData</code>.</p>
+        <textarea id="k8s-decode-in" class="text-input tall" placeholder="apiVersion: v1&#10;kind: Secret&#10;data:&#10;  password: cGFzc3dvcmQ=" spellcheck="false"></textarea>
+        <div class="output-actions">
+          <button id="k8s-decode-clear" class="action-btn" type="button">Очистить</button>
+        </div>
+        <div id="k8s-decode-out" aria-live="polite"></div>
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Разобрать JWT</span>
+        <p class="ctrl-sub">▸ Заголовок, содержимое и сроки. Подпись не проверяется — для этого нужен открытый ключ издателя.</p>
+        <textarea id="k8s-jwt-in" class="text-input tall" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50In0.signature" spellcheck="false"></textarea>
+        <div class="output-actions">
+          <button id="k8s-jwt-clear" class="action-btn" type="button">Очистить</button>
+        </div>
+        <div id="k8s-jwt-out" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ============ 05 · HASHES ============ -->
+    <section class="pwd-card panel-tool hidden" id="panel-hashes" data-panel="hashes">
+      <p class="tool-intro">
+        Контрольные суммы текста или файла. Файл читается локально и никуда не отправляется — <code>connect-src 'none'</code> в CSP это гарантирует независимо от того, веришь ты тексту или нет.
+      </p>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Что считаем</span>
+        <div class="seg" id="hash-source">
+          <button class="seg-btn active" type="button" data-value="text">Текст</button>
+          <button class="seg-btn" type="button" data-value="file">Файл</button>
+        </div>
+      </div>
+
+      <div class="ctrl-section" id="hash-text-wrap">
+        <textarea id="hash-text" class="text-input tall" placeholder="Текст, от которого нужна контрольная сумма" spellcheck="false"></textarea>
+      </div>
+
+      <div class="ctrl-section hidden" id="hash-file-wrap">
+        <div class="drop-zone" id="hash-drop">
+          <b>Перетащи файл сюда</b>
+          или нажми, чтобы выбрать
+        </div>
+        <input type="file" id="hash-file" class="offscreen" />
+      </div>
+
+      <div class="ctrl-section">
+        <span class="ctrl-label">Представление</span>
+        <div class="seg" id="hash-format">
+          <button class="seg-btn active" type="button" data-value="hex">hex</button>
+          <button class="seg-btn" type="button" data-value="base64">base64</button>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div id="hash-out" aria-live="polite"></div>
+      </div>
+    </section>
   </section>
 
-  <!-- PRIVACY + CRYPTO NOTES -->
+  <!-- ============ ПРИВАТНОСТЬ И КРИПТОГРАФИЯ ============ -->
   <section class="block">
     <div class="sec-head">
       <span class="sec-num">01 ·</span>
-      <h2 class="sec-title">Privacy &amp; cryptography</h2>
+      <h2 class="sec-title">Приватность и криптография</h2>
     </div>
 
     <div class="cols-2">
       <div class="panel">
-        <h4>Privacy</h4>
+        <h4>Приватность</h4>
         <ul>
-          <li><strong>Client-side only</strong> — the page never sends generated passwords anywhere. Open DevTools / Network and verify yourself.<span class="why">no XHR, no fetch, no beacon, no third-party scripts</span></li>
-          <li><strong>No analytics</strong> — no Google Analytics, no Plausible, no fingerprinting, no cookies.</li>
-          <li><strong>No logs</strong> — the nginx that serves this page logs HTTP requests (path, status, user agent), not anything you type into the form.</li>
-          <li><strong>Source is public</strong> — verify the claim:<br><a href="https://github.com/AaronShemtov/pwd-frontend">github.com/AaronShemtov/pwd-frontend</a></li>
+          <li><strong>Считается в браузере</strong> — в коде страницы нет ни <code>fetch</code>, ни <code>XMLHttpRequest</code>, ни <code>sendBeacon</code>. Открой DevTools на вкладке Network и убедись сам.</li>
+          <li><strong>Запрет на уровне браузера</strong> — заголовок CSP содержит <code>connect-src 'none'</code>. Даже если бы в странице появился сетевой вызов, браузер бы его заблокировал.<span class="why">это единственное утверждение здесь, которое проверяется без чтения кода</span></li>
+          <li><strong>Один внешний запрос всё же есть</strong> — шрифты с Google Fonts. Он происходит при загрузке страницы, до того как ты что-либо ввёл, и никаких твоих данных не содержит. Самохостинг шрифтов в планах.<span class="why">честнее сказать так, чем писать «no network» и умолчать</span></li>
+          <li><strong>Ни аналитики, ни кук</strong> — единственное, что сохраняется, это выбранная тема в <code>localStorage</code>.</li>
+          <li><strong>Логи</strong> — nginx пишет обычный access-log: путь, код ответа, user-agent. Того, что ты вводишь в формы, там нет и быть не может: это никогда не покидает вкладку.</li>
+          <li><strong>Исходники открыты</strong> — <a href="https://github.com/AaronShemtov/pwd-frontend">github.com/AaronShemtov/pwd-frontend</a></li>
         </ul>
       </div>
       <div class="panel">
-        <h4>Cryptography</h4>
+        <h4>Криптография</h4>
         <ul>
-          <li><strong>CSPRNG</strong> — randomness is sourced from <code>window.crypto.getRandomValues()</code>, backed by the OS-level entropy pool (Linux <code>/dev/urandom</code>, Windows <code>BCryptGenRandom</code>).<span class="why">never Math.random — that's a PRNG, predictable after a few samples</span></li>
-          <li><strong>Uniform distribution</strong> — index into the charset uses rejection sampling against uint32. No modulo bias.<span class="why">`random % N` is biased whenever N doesn't divide 2³²</span></li>
-          <li><strong>Class guarantee</strong> — if a character class is selected but happened to be absent in the generated string, a random position is replaced with one from that class.</li>
-          <li><strong>Entropy</strong> — calculated as log₂(charset_size) × length, the theoretical maximum for uniform random.</li>
+          <li><strong>CSPRNG</strong> — случайность берётся из <code>window.crypto.getRandomValues()</code>, за которым стоит системный источник энтропии.<span class="why">никогда не Math.random — это обычный ГПСЧ, предсказуемый после нескольких выборок</span></li>
+          <li><strong>Равномерность</strong> — индекс в алфавите выбирается отбраковкой значений выше последней полной кратности.<span class="why">random % N смещён всякий раз, когда N не делит 2³² нацело</span></li>
+          <li><strong>bcrypt</strong> — своя реализация, без внешних зависимостей. Константы Blowfish не вписаны по памяти, а выведены из шестнадцатеричного разложения числа π, как в оригинальной статье.<span class="why">сверено с эталонной реализацией, включая UTF-8 и границу в 72 байта</span></li>
+          <li><strong>apr1</strong> — тысяча проходов MD5 с солью, ровно как в Apache. Сверено с passlib.</li>
+          <li><strong>SHA-1 и SHA-2</strong> — из WebCrypto, то есть нативный код браузера.</li>
+          <li><strong>Энтропия</strong> — считается как log₂(размер алфавита) × длина, то есть теоретический максимум для равномерной случайности.</li>
         </ul>
       </div>
     </div>
@@ -331,203 +468,24 @@
 
   <footer class="foot">
     <div>
-      <span class="tag">all generation happens in your browser.</span>
-      <a href="https://infra.1ms.my/">see the architecture →</a>
+      <span class="tag">всё считается в твоём браузере.</span>
+      <a href="https://infra.1ms.my/">архитектура платформы →</a>
     </div>
     <div>
-      <a href="https://github.com/AaronShemtov/pwd-frontend">source</a>
+      <a href="https://github.com/AaronShemtov/pwd-frontend">исходники</a>
     </div>
   </footer>
 
 </main>
 
-<script>
-  // ===== Theme toggle =====
-  var sun = document.getElementById('icon-sun');
-  var moon = document.getElementById('icon-moon');
-  function applyTheme(t){
-    document.documentElement.setAttribute('data-theme', t);
-    if (t === 'dark') { sun.style.display = ''; moon.style.display = 'none'; }
-    else              { sun.style.display = 'none'; moon.style.display = ''; }
-    try { localStorage.setItem('theme', t); } catch(e){}
-  }
-  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
-  document.getElementById('theme-btn').addEventListener('click', function(){
-    var cur = document.documentElement.getAttribute('data-theme') || 'light';
-    applyTheme(cur === 'light' ? 'dark' : 'light');
-  });
-
-  // ===== Password generator =====
-  var CHARS = {
-    upper:  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-    lower:  'abcdefghijklmnopqrstuvwxyz',
-    digit:  '0123456789',
-    symbol: '!@#$%^&*()-_=+[]{};:,.<>?/~`|\\\'"',
-  };
-  var AMBIG = new Set('0O1lI|'.split(''));
-  var DBUF = new Set('\'"\\;$`&'.split(''));
-
-  var $ = function(id){ return document.getElementById(id); };
-  var output = $('output-area');
-  var copyBtn = $('copy-btn'); var copyLabel = $('copy-label');
-  var regenBtn = $('regen-btn');
-  var revealBtn = $('reveal-btn'); var revealLabel = $('reveal-label');
-  var eyeOn = $('eye-on'); var eyeOff = $('eye-off');
-  var entropyFill = $('entropy-fill');
-  var entropyBits = $('entropy-bits');
-  var entropyLabel = $('entropy-label');
-  var customLenInput = $('custom-len-input');
-  var lenBtns = document.querySelectorAll('.len-btn');
-  var batchBtns = document.querySelectorAll('.batch-btn');
-
-  var optUpper = $('opt-upper'), optLower = $('opt-lower'), optDigit = $('opt-digit'), optSymbol = $('opt-symbol');
-  var optNoAmbig = $('opt-no-ambig'), optNoDb = $('opt-no-dbunfriendly');
-
-  var length = 16, batch = 1, revealed = true;
-
-  function buildCharset() {
-    var chars = '';
-    if (optUpper.checked)  chars += CHARS.upper;
-    if (optLower.checked)  chars += CHARS.lower;
-    if (optDigit.checked)  chars += CHARS.digit;
-    if (optSymbol.checked) chars += CHARS.symbol;
-    var arr = chars.split('');
-    if (optNoAmbig.checked) arr = arr.filter(function(c){ return !AMBIG.has(c); });
-    if (optNoDb.checked)    arr = arr.filter(function(c){ return !DBUF.has(c); });
-    return Array.from(new Set(arr));
-  }
-
-  function uniformInt(max) {
-    var limit = Math.floor(0x100000000 / max) * max;
-    var buf = new Uint32Array(1);
-    while (true) {
-      window.crypto.getRandomValues(buf);
-      if (buf[0] < limit) return buf[0] % max;
-    }
-  }
-
-  function genOne(charset, n) {
-    var out = new Array(n);
-    for (var i = 0; i < n; i++) out[i] = charset[uniformInt(charset.length)];
-    return out.join('');
-  }
-
-  function enforceClasses(pwd, charset) {
-    var classes = [];
-    if (optUpper.checked)  classes.push(CHARS.upper.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
-    if (optLower.checked)  classes.push(CHARS.lower.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
-    if (optDigit.checked)  classes.push(CHARS.digit.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
-    if (optSymbol.checked) classes.push(CHARS.symbol.split('').filter(function(c){ return charset.indexOf(c) >= 0; }));
-    var arr = pwd.split('');
-    classes.forEach(function(cls){
-      if (cls.length === 0) return;
-      var has = arr.some(function(c){ return cls.indexOf(c) >= 0; });
-      if (!has) {
-        var pos = uniformInt(arr.length);
-        arr[pos] = cls[uniformInt(cls.length)];
-      }
-    });
-    return arr.join('');
-  }
-
-  function rating(bits) {
-    if (bits < 28)  return { lbl: 'very weak',  pct: 10,  cls: 'vweak' };
-    if (bits < 50)  return { lbl: 'weak',       pct: 30,  cls: 'weak' };
-    if (bits < 72)  return { lbl: 'moderate',   pct: 55,  cls: 'mod' };
-    if (bits < 128) return { lbl: 'strong',     pct: 80,  cls: 'strong' };
-    return                 { lbl: 'excellent',  pct: 100, cls: 'excellent' };
-  }
-
-  function render(passwords, csize) {
-    output.innerHTML = '';
-    passwords.forEach(function(p){
-      var row = document.createElement('div');
-      row.className = 'pwd-row' + (revealed ? '' : ' hidden');
-      row.textContent = p;
-      output.appendChild(row);
-    });
-    var bits = csize > 1 ? Math.log2(csize) * length : 0;
-    var r = rating(bits);
-    entropyFill.style.width = r.pct + '%';
-    entropyFill.className = 'entropy-fill ' + r.cls;
-    entropyBits.textContent = bits.toFixed(0) + ' bits of entropy';
-    entropyLabel.textContent = r.lbl;
-    entropyLabel.className = 'label ' + r.cls;
-  }
-
-  function generate() {
-    var charset = buildCharset();
-    if (charset.length === 0) {
-      output.innerHTML = '<div class="pwd-error">Select at least one character class.</div>';
-      entropyFill.style.width = '0%';
-      entropyBits.textContent = '— bits of entropy';
-      entropyLabel.textContent = '—';
-      entropyLabel.className = 'label';
-      return;
-    }
-    var results = [];
-    for (var i = 0; i < batch; i++) {
-      var p = genOne(charset, length);
-      p = enforceClasses(p, charset);
-      results.push(p);
-    }
-    render(results, charset.length);
-  }
-
-  lenBtns.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      length = parseInt(btn.dataset.len, 10);
-      lenBtns.forEach(function(b){ b.classList.toggle('active', b === btn); });
-      customLenInput.value = '';
-      generate();
-    });
-  });
-  customLenInput.addEventListener('input', function(){
-    var v = parseInt(customLenInput.value, 10);
-    if (!isNaN(v) && v >= 4 && v <= 128) {
-      length = v;
-      lenBtns.forEach(function(b){ b.classList.remove('active'); });
-      generate();
-    }
-  });
-  [optUpper, optLower, optDigit, optSymbol, optNoAmbig, optNoDb].forEach(function(el){
-    el.addEventListener('change', generate);
-  });
-  batchBtns.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      batch = parseInt(btn.dataset.count, 10);
-      batchBtns.forEach(function(b){ b.classList.toggle('active', b === btn); });
-      generate();
-    });
-  });
-  regenBtn.addEventListener('click', generate);
-  copyBtn.addEventListener('click', async function(){
-    var rows = output.querySelectorAll('.pwd-row');
-    if (rows.length === 0) return;
-    var text = Array.from(rows).map(function(r){ return r.textContent; }).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      copyLabel.textContent = 'Copied!';
-      copyBtn.classList.add('copied');
-      setTimeout(function(){ copyLabel.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1500);
-    } catch(e) {
-      var ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch(_) {}
-      document.body.removeChild(ta);
-      copyLabel.textContent = 'Copied!';
-      setTimeout(function(){ copyLabel.textContent = 'Copy'; }, 1500);
-    }
-  });
-  revealBtn.addEventListener('click', function(){
-    revealed = !revealed;
-    output.querySelectorAll('.pwd-row').forEach(function(r){ r.classList.toggle('hidden', !revealed); });
-    revealLabel.textContent = revealed ? 'Hide' : 'Show';
-    eyeOn.style.display = revealed ? '' : 'none';
-    eyeOff.style.display = revealed ? 'none' : '';
-  });
-
-  generate();
-</script>
+<script src="/js/util.js"></script>
+<script src="/js/md5.js"></script>
+<script src="/js/bcrypt.js"></script>
+<script src="/js/tabs.js"></script>
+<script src="/js/passwords.js"></script>
+<script src="/js/tokens.js"></script>
+<script src="/js/basicauth.js"></script>
+<script src="/js/kubernetes.js"></script>
+<script src="/js/hashes.js"></script>
 </body>
 </html>
