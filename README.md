@@ -1,109 +1,109 @@
 # pwd-frontend
 
-**Secrets toolkit for DevOps** — работает на [pwd.1ms.my](https://pwd.1ms.my/).
+**Secrets toolkit for DevOps** — live at [pwd.1ms.my](https://pwd.1ms.my/).
 
-Набор инструментов для секретов, которые нужны в повседневной работе с Kubernetes. Всё считается в браузере: страница не делает ни одного сетевого вызова, и это не обещание в тексте, а запрет на уровне браузера — заголовок CSP содержит `connect-src 'none'`.
+The secrets chores that come up daily when working with Kubernetes, in one page. Everything is computed in the browser: the page makes no network call, and that is not a promise in a paragraph — it is enforced by the browser, because the CSP header carries `connect-src 'none'`.
 
-## Инструменты
+## Tools
 
-| Вкладка | Что делает |
+| Tab | What it does |
 |---|---|
-| **Passwords** | Случайные пароли. Наборы под конкретное место назначения: Shell-safe, YAML-safe, URL-safe, DB-safe, PIN. Измеритель энтропии. |
-| **Tokens** | Случайные байты в hex / base64 / base64url — замена `openssl rand`. Плюс UUID v4 и ULID. |
-| **Basic auth** | Строки `.htpasswd` в трёх форматах и готовые команды к ним. |
-| **Kubernetes** | Сборка `Secret` из пар ключ-значение, разбор `Secret` обратно, разбор JWT и токенов сервис-аккаунтов. |
-| **Hashes** | MD5, SHA-1, SHA-256, SHA-384, SHA-512 для текста и для файла. |
+| **Passwords** | Random passwords, with presets aimed at where the password will actually live: Shell-safe, YAML-safe, URL-safe, DB-safe, PIN. Entropy meter. |
+| **Tokens** | Random bytes as hex / base64 / base64url — a replacement for `openssl rand`. Plus UUID v4 and ULID. |
+| **Basic auth** | `.htpasswd` lines in three formats, with the commands to go with them. |
+| **Kubernetes** | Build a `Secret` from key/value pairs, decode one back, inspect a JWT or a service account token. |
+| **Hashes** | MD5, SHA-1, SHA-256, SHA-384, SHA-512 over text or a file. |
 
-### Почему в Basic auth три формата
+### Why Basic auth has three formats
 
-Потому что их требуют разные потребители, и перепутать их легко:
+Because three different consumers demand three different things, and mixing them up is easy:
 
-- `{SHA}` — **Envoy и Envoy Gateway**. Другого они не понимают: поддержка bcrypt в фильтре `basic_auth` до сих пор в открытых задачах. SHA-1 без соли — слабо, компенсируется длиной пароля.
-- `$2a$` — **bcrypt**. Именно это ArgoCD ждёт в поле `admin.password` секрета `argocd-secret`. Префикс намеренно `$2a$`, а не `$2y$`, который выдаёт `htpasswd`: ArgoCD ожидает первый, и обычно это лечат через `sed 's/$2y/$2a/'`. Здесь такой шаг не нужен.
-- `$apr1$` — **nginx и Traefik**. Формат `htpasswd` по умолчанию.
+- `{SHA}` — **Envoy and Envoy Gateway**. They understand nothing else: bcrypt support in the `basic_auth` filter is still an open issue. Unsalted SHA-1 is weak, so compensate with password length.
+- `$2a$` — **bcrypt**. Exactly what ArgoCD expects in the `admin.password` field of `argocd-secret`. The prefix is deliberately `$2a$` rather than the `$2y$` that `htpasswd` emits: ArgoCD wants the former, and the usual fix is `sed 's/$2y/$2a/'`. That step is not needed here.
+- `$apr1$` — **nginx and Traefik**. The `htpasswd` default.
 
-Две мины, которые страница обходит за тебя:
+Two landmines the page walks around for you:
 
-1. **Кавычки.** bcrypt и apr1 содержат `$`. Внутри двойных кавычек bash попробует раскрыть `$2a` как переменную. Все сгенерированные команды используют одинарные кавычки, а многострочные значения — форму `$'...\n...'`.
-2. **Переводы строк.** Envoy отвергает `.htpasswd` с окончаниями CRLF, при этом `SecurityPolicy` рапортует `Accepted: True`, а настоящая ошибка видна только в логах Envoy. Здесь строки всегда разделены одним LF.
+1. **Quoting.** bcrypt and apr1 hashes contain `$`. Inside double quotes, bash would try to expand `$2a` as a variable. Every generated command uses single quotes, and multi-line values use the `$'...\n...'` form.
+2. **Line endings.** Envoy rejects a `.htpasswd` with CRLF endings while the `SecurityPolicy` reports `Accepted: True`, leaving the real error visible only in the Envoy logs. Lines here are always separated by a single LF.
 
-## Криптография и её проверка
+## Cryptography, and how it was checked
 
-Никаких зависимостей — ни npm, ни CDN. SHA-* берутся из WebCrypto, то есть это нативный код браузера. MD5 и bcrypt браузер не предоставляет, поэтому они реализованы в `public/js/md5.js` и `public/js/bcrypt.js`.
+No dependencies — no npm, no CDN. SHA-* come from WebCrypto, which means native browser code. Browsers expose neither MD5 nor bcrypt, so those live in `public/js/md5.js` and `public/js/bcrypt.js`.
 
-Константы Blowfish в `bcrypt.js` не вписаны по памяти: это шестнадцатеричное разложение дробной части числа π, ровно как в оригинальной работе Шнайера. Они лежат одной строкой и разбираются при загрузке — так их можно перепроверить самостоятельно.
+The Blowfish constants in `bcrypt.js` were not typed from memory. They are the hexadecimal expansion of the fractional part of π, exactly as in Schneier's original paper, derived programmatically and checked against independently known values. They sit in the file as one string and are parsed at load time, so anyone can verify them.
 
-Обе реализации сверены с эталонными:
+Both implementations were cross-checked against references:
 
-| Что | С чем сверялось | Покрытие |
+| What | Checked against | Coverage |
 |---|---|---|
-| bcrypt | `bcrypt` (Python) | 11 векторов, включая UTF-8, эмодзи, пустой пароль и границу в 72 байта |
-| apr1 | `passlib.hash.apr_md5_crypt` | 11 векторов |
-| MD5 | `hashlib` | 23 вектора, включая границы блоков 55/56/57/63/64/65 байт |
-| `{SHA}` | `openssl dgst -sha1` | совпадение строки в строку |
+| bcrypt | `bcrypt` (Python) | 11 vectors, including UTF-8, emoji, empty password and the 72-byte boundary |
+| apr1 | `passlib.hash.apr_md5_crypt` | 11 vectors |
+| MD5 | `hashlib` | 23 vectors, including the 55/56/57/63/64/65-byte block boundaries |
+| `{SHA}` | `openssl dgst -sha1` | exact string match |
 
-Проверка не разовая: выводы страницы прогонялись через `bcrypt.checkpw()` и `apr_md5_crypt.verify()` — то есть эталон подтвердил, что сгенерированные здесь хеши действительно валидируют исходный пароль.
+The check ran in both directions: hashes produced by the page were fed back through `bcrypt.checkpw()` and `apr_md5_crypt.verify()`, confirming that they really do validate the original password.
 
-## Что сюда сознательно не вошло
+## Deliberately not included
 
-- **Генерация SSH-ключей.** Технически выполнимо, но просьба «сгенерируй мне приватный ключ в браузере» — это ровно та операция, которую разумный человек делает локально через `ssh-keygen`. Инструмент, подрывающий доверие к остальным, здесь не нужен.
-- **Секреты TOTP.** Второй фактор выдаёт сам сервис, и вводить его на посторонней странице — плохая привычка, которую не стоит поощрять.
-- **Парольные фразы (diceware).** Отложено: словарь EFF весит около 60 KB ради одной функции. Вернёмся, когда появится явная потребность.
+- **SSH key generation.** Technically feasible, but "generate my private key in a browser tab" is precisely the operation a sensible person performs locally with `ssh-keygen`. A tool that undermines trust in the rest of the page does not belong here.
+- **TOTP secrets.** The second factor is issued by the service itself, and typing it into someone else's page is a habit not worth encouraging.
+- **Diceware passphrases.** Postponed: the EFF wordlist costs about 60 KB for a single feature. Worth revisiting when there is a concrete need.
 
-## Стек
+## Stack
 
-- Статические HTML, CSS и обычный JavaScript без сборщика
-- nginx-unprivileged (Alpine), UID 101, порт 8080
+- Static HTML, CSS and plain JavaScript, no bundler
+- nginx-unprivileged (Alpine), UID 101, port 8080
 - GitHub Actions → OCIR (linux/arm64)
-- Flux Image Automation подставляет новый тег обратно в [personal-k8s](https://github.com/AaronShemtov/personal-k8s)
+- Flux Image Automation writes the new tag back into [personal-k8s](https://github.com/AaronShemtov/personal-k8s)
 
-## Общий стиль
+## Shared styling
 
-Все четыре сайта платформы 1ms.my (1ms.my, cv, infra, pwd) используют один и тот же `blueprint.css`, физически скопированный в каждый репозиторий.
+All four 1ms.my sites (1ms.my, cv, infra, pwd) use the same `blueprint.css`, physically copied into each repository.
 
-**Этот файл здесь не редактируется.** Любая правка в нём должна одновременно разойтись по всем четырём репозиториям, иначе копии разъедутся и станет непонятно, какая из них свежая. Всё, что нужно только этой странице, лежит в `public/pwd.css`.
+**That file is not edited here.** Any change to it has to land in all four repositories at once, otherwise the copies drift apart and it stops being obvious which one is current. Everything only this page needs lives in `public/pwd.css`.
 
-## Структура
+## Layout
 
 ```
 public/
-├── index.html        только разметка
-├── blueprint.css     общий для четырёх сайтов, не трогать
-├── pwd.css           стили этой страницы
+├── index.html        markup only
+├── blueprint.css     shared across four sites — do not edit here
+├── pwd.css           styles for this page
 ├── favicon.ico
 └── js/
-    ├── theme.js      тема, подключается в <head> до отрисовки
-    ├── util.js       общие помощники
-    ├── tabs.js       вкладки и адресация через хеш
-    ├── md5.js        MD5 и apr1
+    ├── theme.js      theme; loaded in <head> before first paint
+    ├── util.js       shared helpers
+    ├── tabs.js       tab bar and hash routing
+    ├── md5.js        MD5 and apr1
     ├── bcrypt.js     bcrypt
-    ├── passwords.js  вкладка 01
-    ├── tokens.js     вкладка 02
-    ├── basicauth.js  вкладка 03
-    ├── kubernetes.js вкладка 04
-    └── hashes.js     вкладка 05
+    ├── passwords.js  tab 01
+    ├── tokens.js     tab 02
+    ├── basicauth.js  tab 03
+    ├── kubernetes.js tab 04
+    └── hashes.js     tab 05
 ```
 
-В разметке нет ни одного inline-скрипта, стиля или обработчика в атрибуте — именно поэтому CSP обходится без `unsafe-inline`.
+The markup contains no inline script, no inline style and no attribute event handler — which is exactly why the CSP needs no `unsafe-inline`.
 
-## Ссылки на конкретный инструмент
+## Linking to a single tool
 
-Открытая вкладка попадает в адрес, так что можно кинуть коллеге прямую ссылку:
+The open tab is reflected in the URL, so a specific tool can be shared directly:
 
 ```
 https://pwd.1ms.my/#basicauth
 https://pwd.1ms.my/#kubernetes
 ```
 
-## Локальный просмотр
+## Local preview
 
 ```bash
 cd public
 python3 -m http.server 8000
-# открыть http://localhost:8000
+# open http://localhost:8000
 ```
 
-Заголовков из `nginx.conf` при таком запуске не будет, поэтому CSP локально не проверяется. Чтобы посмотреть страницу с боевыми заголовками, собери образ:
+Serving it that way sends none of the headers from `nginx.conf`, so the CSP is not exercised locally. To see the page with the real headers, build the image:
 
 ```bash
 docker build -t pwd-frontend:local .
@@ -111,6 +111,6 @@ docker run --rm -p 8080:8080 pwd-frontend:local
 curl -sI http://localhost:8080/ | grep -i 'content-security\|cache-control\|x-content-type'
 ```
 
-## Лицензия
+## License
 
 MIT.

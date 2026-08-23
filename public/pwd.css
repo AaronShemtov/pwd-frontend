@@ -1,15 +1,15 @@
 /* ============================================================
-   pwd.css — стили страницы pwd.1ms.my.
+   pwd.css — styles specific to pwd.1ms.my.
 
-   blueprint.css здесь НЕ трогается: он общий для 1ms.my, cv, infra
-   и pwd, и любая правка в нём должна расходиться сразу по четырём
-   репозиториям. Всё, что нужно только этой странице, живёт тут.
+   blueprint.css is NOT touched here: it is shared by 1ms.my, cv,
+   infra and pwd, and any edit to it has to land in all four
+   repositories at once. Everything only this page needs lives here.
 
-   Собственных цветов нет — только переменные из blueprint.css,
-   поэтому тёмная тема работает сама собой.
+   No literal colours are used — only the custom properties from
+   blueprint.css, so the dark theme works for free.
    ============================================================ */
 
-/* ---------- Утилиты ---------- */
+/* ---------- Utilities ---------- */
 
 .hidden { display: none !important; }
 
@@ -20,7 +20,7 @@
 
 .mono-wrap { word-break: break-all; }
 
-/* ---------- Панель вкладок ---------- */
+/* ---------- Tab bar ---------- */
 
 .tabs {
   display: flex; gap: 4px; flex-wrap: wrap;
@@ -49,7 +49,7 @@
   .tab .num { display: none; }
 }
 
-/* ---------- Карточка инструмента ---------- */
+/* ---------- Tool card ---------- */
 
 .pwd-card {
   background: var(--paper); border: 1px solid var(--line);
@@ -81,7 +81,7 @@
   font-size: 0.88em; color: var(--ink);
 }
 
-/* ---------- Блок вывода ---------- */
+/* ---------- Output block ---------- */
 
 .output-block {
   background: var(--code-bg); color: var(--code-ink);
@@ -120,7 +120,7 @@ html[data-theme="dark"] .action-btn.primary { color: var(--bg); }
 .action-btn.copied { background: var(--live); border-color: var(--live); color: white; }
 .action-btn svg { width: 13px; height: 13px; }
 
-/* ---------- Измеритель энтропии ---------- */
+/* ---------- Entropy meter ---------- */
 
 .entropy-row { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
 .entropy-bar {
@@ -144,7 +144,7 @@ html[data-theme="dark"] .action-btn.primary { color: var(--bg); }
 .entropy-meta .label.strong { color: var(--live); }
 .entropy-meta .label.excellent { color: #2da44e; }
 
-/* ---------- Секции управления ---------- */
+/* ---------- Control sections ---------- */
 
 .ctrl-section { margin-top: 28px; }
 .ctrl-label {
@@ -159,7 +159,7 @@ html[data-theme="dark"] .action-btn.primary { color: var(--bg); }
 .ctrl-sub.note-medium { color: var(--ink-2); }
 .ctrl-sub.note-strong { color: var(--live); }
 
-/* ---------- Сетки кнопок ---------- */
+/* ---------- Button grids ---------- */
 
 .len-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 6px; }
 .len-btn {
@@ -195,7 +195,7 @@ html[data-theme="dark"] .preset-btn.active { color: var(--bg); }
 .batch-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
 html[data-theme="dark"] .batch-btn.active { color: var(--bg); }
 
-/* ---------- Сегментированный переключатель ---------- */
+/* ---------- Segmented control ---------- */
 
 .seg { display: inline-flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .seg-btn {
@@ -208,7 +208,7 @@ html[data-theme="dark"] .batch-btn.active { color: var(--bg); }
 .seg-btn.active { background: var(--accent); color: white; }
 html[data-theme="dark"] .seg-btn.active { color: var(--bg); }
 
-/* ---------- Поля ввода ---------- */
+/* ---------- Inputs ---------- */
 
 .text-input {
   padding: 9px 12px; background: var(--bg);
@@ -234,7 +234,7 @@ textarea.tall { min-height: 150px; }
 }
 .custom-len .text-input { width: 110px; flex: 0 0 110px; }
 
-/* ---------- Чекбоксы ---------- */
+/* ---------- Checkboxes ---------- */
 
 .checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px; }
 .check {
@@ -247,7 +247,7 @@ textarea.tall { min-height: 150px; }
 .check .main { flex: 1; color: var(--ink); }
 .check .meta { font-size: 11px; color: var(--mute); }
 
-/* ---------- Строки пользователей и ключей ---------- */
+/* ---------- User and key/value rows ---------- */
 
 .ba-row, .kv-row {
   display: grid; gap: 8px; margin-bottom: 8px; align-items: start;
@@ -262,7 +262,7 @@ textarea.tall { min-height: 150px; }
   .ba-row .ba-del, .kv-row .kv-del { justify-self: start; }
 }
 
-/* ---------- Именованный вывод ---------- */
+/* ---------- Labelled output ---------- */
 
 .out-block { margin-top: 22px; }
 .out-head {
@@ -282,7 +282,7 @@ pre.out-body {
   overflow-x: auto; white-space: pre-wrap; word-break: break-word;
 }
 
-/* ---------- Зона перетаскивания ---------- */
+/* ---------- Drop zone ---------- */
 
 .drop-zone {
   border: 1.5px dashed var(--line); border-radius: 8px;
@@ -296,12 +296,12 @@ pre.out-body {
 }
 .drop-zone b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 5px; }
 
-/* ---------- Таблица результатов ---------- */
+/* ---------- Result table ---------- */
 
 .val-cell { max-width: 0; }
 .val-text { display: block; word-break: break-all; white-space: pre-wrap; }
 
-/* ---------- Прочее ---------- */
+/* ---------- Misc ---------- */
 
 .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 20px 0 0; }
 
@@ -311,7 +311,7 @@ pre.out-body {
   line-height: 1.6;
 }
 
-/* ---------- Мелочи ленты сверху ---------- */
+/* ---------- Top ribbon bits ---------- */
 
 .mute-sep { color: var(--mute); }
 .ribbon-right { display: flex; align-items: center; gap: 18px; }

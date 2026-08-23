@@ -1,5 +1,5 @@
-/* Общие помощники для всех инструментов.
- * Ничего не отправляет в сеть — здесь нет ни fetch, ни XHR.
+/* Shared helpers used by every tool.
+ * Nothing here touches the network: there is no fetch and no XHR.
  */
 (function (global) {
   'use strict';
@@ -14,12 +14,12 @@
     return n;
   }
 
-  /* ---------- Случайность ---------- */
+  /* ---------- Randomness ---------- */
 
-  // Равномерный индекс без смещения по модулю: значения выше последней
-  // полной кратности отбрасываются и тянутся заново.
+  // Uniform index with no modulo bias: any value above the last whole
+  // multiple is rejected and redrawn.
   function uniformInt(max) {
-    if (max <= 0) throw new Error('max должен быть больше нуля');
+    if (max <= 0) throw new Error('max must be greater than zero');
     var limit = Math.floor(0x100000000 / max) * max;
     var buf = new Uint32Array(1);
     for (;;) {
@@ -34,7 +34,7 @@
     return b;
   }
 
-  /* ---------- Кодировки ---------- */
+  /* ---------- Encodings ---------- */
 
   var TE = new TextEncoder();
   var TD = new TextDecoder('utf-8', { fatal: false });
@@ -50,14 +50,14 @@
 
   function fromHex(str) {
     var clean = str.replace(/[^0-9a-fA-F]/g, '');
-    if (clean.length % 2) throw new Error('нечётное число шестнадцатеричных цифр');
+    if (clean.length % 2) throw new Error('odd number of hex digits');
     var out = new Uint8Array(clean.length / 2);
     for (var i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
     return out;
   }
 
-  // btoa работает с байтами, а не с символами, поэтому строку сначала
-  // переводим в UTF-8 — иначе кириллица и эмодзи ломаются.
+  // btoa deals in bytes rather than characters, so the string is encoded
+  // to UTF-8 first — otherwise anything non-ASCII breaks.
   function b64FromBytes(bytes, urlSafe) {
     var bin = '';
     for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -83,8 +83,8 @@
     return t.length > 0 && t.length % 4 <= 3 && /^[A-Za-z0-9+/_=-]+$/.test(t);
   }
 
-  // Признак того, что расшифрованные байты — читаемый текст, а не бинарь
-  // (сертификат, ключ, tar). Нужен, чтобы не вываливать мусор в таблицу.
+  // Heuristic for whether decoded bytes are readable text rather than a
+  // binary blob (certificate, key, tarball) — keeps junk out of the table.
   function isPrintable(bytes) {
     var suspicious = 0;
     for (var i = 0; i < bytes.length; i++) {
@@ -101,7 +101,7 @@
     return (n / 1024 / 1024).toFixed(2) + ' MB';
   }
 
-  /* ---------- Хеши ---------- */
+  /* ---------- Digests ---------- */
 
   // 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512'
   function digest(algo, bytes) {
@@ -110,7 +110,7 @@
     });
   }
 
-  /* ---------- Интерфейс ---------- */
+  /* ---------- Interface ---------- */
 
   function flash(btn, labelNode, msg) {
     var original = labelNode ? labelNode.textContent : null;
@@ -127,7 +127,7 @@
       return navigator.clipboard.writeText(text);
     }
     return new Promise(function (resolve, reject) {
-      // Запасной путь для контекстов без Clipboard API.
+      // Fallback for contexts without the Clipboard API.
       var ta = document.createElement('textarea');
       ta.value = text;
       ta.setAttribute('readonly', '');
@@ -137,12 +137,12 @@
       var ok = false;
       try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
       document.body.removeChild(ta);
-      ok ? resolve() : reject(new Error('копирование недоступно'));
+      ok ? resolve() : reject(new Error('clipboard unavailable'));
     });
   }
 
-  // Вешает копирование на кнопку. getText вызывается в момент клика,
-  // поэтому копируется всегда актуальное значение.
+  // Wires copy-to-clipboard onto a button. getText runs at click time, so
+  // whatever is current gets copied.
   function bindCopy(btn, getText, labelNode) {
     if (!btn) return;
     btn.addEventListener('click', function () {
@@ -156,7 +156,7 @@
     });
   }
 
-  // Сегментированный переключатель: одна активная кнопка из группы.
+  // Segmented control: exactly one active button per group.
   function bindSegmented(root, onChange) {
     var btns = $$('.seg-btn', root);
     btns.forEach(function (b) {
@@ -171,8 +171,8 @@
     };
   }
 
-  // Запускает fn ровно один раз, независимо от того, сколько раз
-  // придёт DOMContentLoaded и в каком состоянии документ на момент вызова.
+  // Runs fn exactly once, no matter how many times DOMContentLoaded fires
+  // or what state the document is in when this is called.
   function ready(fn) {
     var done = false;
     function run() { if (done) return; done = true; fn(); }

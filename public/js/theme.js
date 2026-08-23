@@ -1,15 +1,15 @@
-/* Переключатель темы.
+/* Theme toggle.
  *
- * Файл подключается синхронно в <head> до отрисовки: если поставить тему
- * позже, на тёмной теме будет белая вспышка. Раньше этот код был встроен
- * в страницу — вынесен наружу, чтобы CSP обошлась без 'unsafe-inline'.
+ * Loaded synchronously in <head>, before first paint: applying the theme
+ * any later produces a white flash on the dark theme. This used to be an
+ * inline script and was pulled out so the CSP can drop 'unsafe-inline'.
  */
 (function () {
   'use strict';
 
   function apply(t) {
     document.documentElement.setAttribute('data-theme', t);
-    try { localStorage.setItem('theme', t); } catch (e) { /* приватный режим */ }
+    try { localStorage.setItem('theme', t); } catch (e) { /* private mode */ }
     var sun = document.getElementById('icon-sun');
     var moon = document.getElementById('icon-moon');
     if (sun && moon) {
@@ -18,7 +18,7 @@
     }
   }
 
-  // Выполняется немедленно, ещё до <body>.
+  // Runs immediately, before <body> even exists.
   var saved = 'light';
   try { saved = localStorage.getItem('theme') || 'light'; } catch (e) { /* ignore */ }
   document.documentElement.setAttribute('data-theme', saved);

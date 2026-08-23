@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ru" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>pwd — secrets toolkit for DevOps &amp; Kubernetes</title>
-<meta name="description" content="Пароли, токены, htpasswd для Envoy и ArgoCD, сборка и разбор Kubernetes Secret, разбор JWT, контрольные суммы. Всё считается в браузере — ни один секрет не уходит в сеть." />
+<title>pwd — Secrets toolkit for DevOps</title>
+<meta name="description" content="Secrets toolkit for DevOps: passwords, random tokens, htpasswd for Envoy and ArgoCD, Kubernetes Secret builder and decoder, JWT inspector, checksums. Everything is computed in your browser — no secret ever leaves the tab." />
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/blueprint.css" />
 <link rel="stylesheet" href="/pwd.css" />
-<!-- Подключается синхронно: тема должна встать до первой отрисовки. -->
+<!-- Loaded synchronously: the theme must be applied before first paint. -->
 <script src="/js/theme.js"></script>
 </head>
 <body>
@@ -20,7 +20,7 @@
 <div class="ribbon">
   <div class="ribbon-inner">
     <div class="ribbon-left">
-      <span class="brand">Aaron Shemtov <span class="mute-sep">· secrets toolkit</span></span>
+      <span class="brand">Aaron Shemtov <span class="mute-sep">· secrets toolkit for DevOps</span></span>
     </div>
     <div class="ribbon-right">
       <nav class="ribbon-nav">
@@ -29,7 +29,7 @@
         <a href="https://infra.1ms.my/">platform</a>
         <a href="https://pwd.1ms.my/" class="current">pwd</a>
       </nav>
-      <button class="theme-btn" id="theme-btn" aria-label="Переключить тему" title="Переключить тему" type="button">
+      <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme" type="button">
         <svg id="icon-sun" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
@@ -52,7 +52,7 @@
     <div class="title-tag">window.crypto.getRandomValues(...)<span class="blink"></span></div>
 
     <p class="lede">
-      Набор инструментов для секретов, которые каждый день нужны в работе с Kubernetes: пароли и токены, <strong>htpasswd для Envoy и ArgoCD</strong>, сборка и разбор <code>Secret</code>, разбор JWT, контрольные суммы. Всё считается прямо в браузере: в коде страницы нет ни одного сетевого вызова, а заголовок <code>Content-Security-Policy</code> запрещает их директивой <code>connect-src 'none'</code> — то есть запрет обеспечивает браузер, а не обещание в тексте.
+      A <strong>secrets toolkit for DevOps</strong>: passwords and random tokens, <strong>htpasswd for Envoy and ArgoCD</strong>, a Kubernetes <code>Secret</code> builder and decoder, a JWT inspector and checksums. Everything is computed in the browser. There is no <code>fetch</code> anywhere in the page, and the <code>Content-Security-Policy</code> header forbids network calls outright with <code>connect-src 'none'</code> — so the guarantee is enforced by your browser rather than promised in a paragraph.
     </p>
 
     <div class="tag-row">
@@ -74,7 +74,7 @@
     <!-- ============ 01 · PASSWORDS ============ -->
     <section class="pwd-card panel-tool" id="panel-passwords" data-panel="passwords">
       <p class="tool-intro">
-        Случайный пароль из алфавита, который ты задаёшь сам. Индекс в алфавите выбирается <strong>отбраковкой</strong>, а не остатком от деления, поэтому символы распределены равномерно и смещения по модулю нет.
+        A random password over an alphabet you choose. The index into that alphabet is drawn by <strong>rejection sampling</strong> rather than a modulo, so every character is equally likely and there is no modulo bias.
       </p>
 
       <div id="pw-output" class="output-block" aria-live="polite"></div>
@@ -115,7 +115,7 @@
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Куда поедет пароль</span>
+        <span class="ctrl-label">Where the password will end up</span>
         <p class="ctrl-sub" id="pw-preset-note">—</p>
         <div class="preset-grid">
           <button class="preset-btn" type="button" data-preset="balanced">Balanced</button>
@@ -128,41 +128,41 @@
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Длина</span>
-        <p class="ctrl-sub">▸ Слева число символов, справа типичное применение.</p>
+        <span class="ctrl-label">Length</span>
+        <p class="ctrl-sub">▸ Character count on the left, the typical use case on the right.</p>
         <div class="len-grid">
-          <button type="button" class="len-btn" data-len="8"><span class="n">8</span><span class="hint">старые ограничения</span></button>
-          <button type="button" class="len-btn" data-len="12"><span class="n">12</span><span class="hint">бытовой минимум</span></button>
-          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">разумный дефолт</span></button>
-          <button type="button" class="len-btn active" data-len="20"><span class="n">20</span><span class="hint">важные аккаунты</span></button>
-          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">мастер-пароль</span></button>
-          <button type="button" class="len-btn" data-len="32"><span class="n">32</span><span class="hint">БД и API-токены</span></button>
-          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">секреты приложений</span></button>
-          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">с запасом</span></button>
+          <button type="button" class="len-btn" data-len="8"><span class="n">8</span><span class="hint">legacy 8-char limits</span></button>
+          <button type="button" class="len-btn" data-len="12"><span class="n">12</span><span class="hint">consumer baseline</span></button>
+          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">sensible default</span></button>
+          <button type="button" class="len-btn active" data-len="20"><span class="n">20</span><span class="hint">important accounts</span></button>
+          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">master password</span></button>
+          <button type="button" class="len-btn" data-len="32"><span class="n">32</span><span class="hint">DB and API tokens</span></button>
+          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">application secrets</span></button>
+          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">room to spare</span></button>
         </div>
         <div class="custom-len">
-          <label for="pw-custom-len">Своя:</label>
+          <label for="pw-custom-len">Custom:</label>
           <input id="pw-custom-len" class="text-input" type="number" min="4" max="256" step="1" placeholder="4 – 256" />
-          <span>перебивает кнопки выше</span>
+          <span>overrides the buttons above</span>
         </div>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Символы</span>
-        <p class="ctrl-sub">▸ Нужен хотя бы один класс. Правка сбрасывает выбранный набор.</p>
+        <span class="ctrl-label">Characters</span>
+        <p class="ctrl-sub">▸ At least one class is required. Changing these clears the selected preset.</p>
         <div class="checklist">
-          <label class="check"><input type="checkbox" id="pw-upper" checked /><span class="main">Заглавные</span><span class="meta">A – Z</span></label>
-          <label class="check"><input type="checkbox" id="pw-lower" checked /><span class="main">Строчные</span><span class="meta">a – z</span></label>
-          <label class="check"><input type="checkbox" id="pw-digit" checked /><span class="main">Цифры</span><span class="meta">0 – 9</span></label>
-          <label class="check"><input type="checkbox" id="pw-symbol" checked /><span class="main">Символы</span><span class="meta">!@#$%^&amp;*…</span></label>
-          <label class="check"><input type="checkbox" id="pw-no-ambig" /><span class="main">Без похожих</span><span class="meta">0 O 1 l I</span></label>
-          <label class="check"><input type="checkbox" id="pw-no-db" /><span class="main">Без опасных для БД</span><span class="meta">' " \ ; $ ` &amp;</span></label>
+          <label class="check"><input type="checkbox" id="pw-upper" checked /><span class="main">Uppercase</span><span class="meta">A – Z</span></label>
+          <label class="check"><input type="checkbox" id="pw-lower" checked /><span class="main">Lowercase</span><span class="meta">a – z</span></label>
+          <label class="check"><input type="checkbox" id="pw-digit" checked /><span class="main">Digits</span><span class="meta">0 – 9</span></label>
+          <label class="check"><input type="checkbox" id="pw-symbol" checked /><span class="main">Symbols</span><span class="meta">!@#$%^&amp;*…</span></label>
+          <label class="check"><input type="checkbox" id="pw-no-ambig" /><span class="main">Exclude look-alikes</span><span class="meta">0 O 1 l I</span></label>
+          <label class="check"><input type="checkbox" id="pw-no-db" /><span class="main">Exclude DB-unfriendly</span><span class="meta">' " \ ; $ ` &amp;</span></label>
         </div>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Сколько сразу</span>
-        <p class="ctrl-sub">▸ Когда заводишь несколько учёток или сервисов за один заход.</p>
+        <span class="ctrl-label">How many at once</span>
+        <p class="ctrl-sub">▸ For provisioning several accounts or services in one go.</p>
         <div class="batch-grid">
           <button type="button" class="batch-btn active" data-count="1">1</button>
           <button type="button" class="batch-btn" data-count="5">5</button>
@@ -175,7 +175,7 @@
     <!-- ============ 02 · TOKENS ============ -->
     <section class="pwd-card panel-tool hidden" id="panel-tokens" data-panel="tokens">
       <p class="tool-intro">
-        Сырые случайные байты — то, что обычно добывают через <code>openssl rand</code>. Подходит для секретов подписи JWT, токенов вебхуков, ключей шифрования и всего, что человек читать не будет.
+        Raw random bytes — what you would normally reach for <code>openssl rand</code> to get. Suitable for JWT signing secrets, webhook tokens, encryption keys and anything else no human will ever read.
       </p>
 
       <div id="tok-output" class="output-block small" aria-live="polite"></div>
@@ -187,24 +187,24 @@
       <div class="entropy-row"><div class="entropy-meta"><span id="tok-meta">—</span></div></div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Сколько байт</span>
+        <span class="ctrl-label">How many bytes</span>
         <div class="len-grid">
-          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">128 бит</span></button>
-          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">192 бита</span></button>
-          <button type="button" class="len-btn active" data-len="32"><span class="n">32</span><span class="hint">256 бит · дефолт</span></button>
-          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">384 бита</span></button>
-          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">512 бит</span></button>
+          <button type="button" class="len-btn" data-len="16"><span class="n">16</span><span class="hint">128 bits</span></button>
+          <button type="button" class="len-btn" data-len="24"><span class="n">24</span><span class="hint">192 bits</span></button>
+          <button type="button" class="len-btn active" data-len="32"><span class="n">32</span><span class="hint">256 bits · default</span></button>
+          <button type="button" class="len-btn" data-len="48"><span class="n">48</span><span class="hint">384 bits</span></button>
+          <button type="button" class="len-btn" data-len="64"><span class="n">64</span><span class="hint">512 bits</span></button>
         </div>
         <div class="custom-len">
-          <label for="tok-custom">Своё:</label>
+          <label for="tok-custom">Custom:</label>
           <input id="tok-custom" class="text-input" type="number" min="4" max="512" step="1" placeholder="4 – 512" />
-          <span>байт</span>
+          <span>bytes</span>
         </div>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Представление</span>
-        <p class="ctrl-sub">▸ base64url — без символов <code>+</code>, <code>/</code> и <code>=</code>, переживает попадание в URL и в имя переменной окружения.</p>
+        <span class="ctrl-label">Encoding</span>
+        <p class="ctrl-sub">▸ base64url drops <code>+</code>, <code>/</code> and <code>=</code>, so it survives being pasted into a URL or an environment variable.</p>
         <div class="seg" id="tok-format">
           <button class="seg-btn active" type="button" data-value="hex">hex</button>
           <button class="seg-btn" type="button" data-value="base64">base64</button>
@@ -213,7 +213,7 @@
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Сколько сразу</span>
+        <span class="ctrl-label">How many at once</span>
         <div class="batch-grid">
           <button type="button" class="batch-btn active" data-count="1">1</button>
           <button type="button" class="batch-btn" data-count="5">5</button>
@@ -223,19 +223,19 @@
       </div>
 
       <div class="out-block">
-        <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+        <div class="out-head"><span class="lbl">the same thing in a terminal</span></div>
         <pre class="out-body" id="tok-cli"></pre>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Идентификаторы</span>
-        <p class="ctrl-sub">▸ UUID v4 — 122 случайных бита. ULID — 48 бит времени плюс 80 случайных, поэтому сортируется по возрастанию времени создания.</p>
+        <span class="ctrl-label">Identifiers</span>
+        <p class="ctrl-sub">▸ UUID v4 carries 122 random bits. ULID is 48 bits of timestamp plus 80 random ones, so a list of them sorts by creation time.</p>
         <div class="seg" id="tok-id-kind">
           <button class="seg-btn active" type="button" data-value="uuid">UUID v4</button>
           <button class="seg-btn" type="button" data-value="ulid">ULID</button>
         </div>
         <div class="field-row">
-          <label for="tok-id-count">Количество:</label>
+          <label for="tok-id-count">Count:</label>
           <input id="tok-id-count" class="text-input" type="number" min="1" max="50" step="1" value="1" />
         </div>
         <div id="tok-id-output" class="output-block small" aria-live="polite"></div>
@@ -244,7 +244,7 @@
           <button id="tok-id-regen" class="action-btn" type="button">Regenerate</button>
         </div>
         <div class="out-block">
-          <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+          <div class="out-head"><span class="lbl">the same thing in a terminal</span></div>
           <pre class="out-body" id="tok-id-cli"></pre>
         </div>
       </div>
@@ -253,11 +253,11 @@
     <!-- ============ 03 · BASIC AUTH ============ -->
     <section class="pwd-card panel-tool hidden" id="panel-basicauth" data-panel="basicauth">
       <p class="tool-intro">
-        Строки <code>.htpasswd</code> и готовые команды к ним. Три формата, потому что их требуют разные потребители: <strong>Envoy</strong> понимает только <code>{SHA}</code>, <strong>ArgoCD</strong> ждёт bcrypt в поле <code>admin.password</code>, <strong>nginx и Traefik</strong> — <code>$apr1$</code>. Официальная документация ArgoCD на этом месте предлагает вбить пароль администратора на постороннем сайте; здесь всё считается у тебя в браузере.
+        <code>.htpasswd</code> lines and the commands that go with them. Three formats, because three different consumers demand three different things: <strong>Envoy</strong> understands only <code>{SHA}</code>, <strong>ArgoCD</strong> expects bcrypt in <code>admin.password</code>, and <strong>nginx and Traefik</strong> want <code>$apr1$</code>. The official ArgoCD documentation suggests generating that hash on a third-party website; here it is computed in your own browser.
       </p>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Формат хеша</span>
+        <span class="ctrl-label">Hash format</span>
         <div class="seg" id="ba-format">
           <button class="seg-btn active" type="button" data-value="sha1">{SHA} · Envoy</button>
           <button class="seg-btn" type="button" data-value="bcrypt">$2a$ · bcrypt</button>
@@ -265,26 +265,26 @@
         </div>
         <p class="ctrl-sub" id="ba-note">—</p>
         <div class="field-row hidden" id="ba-cost-wrap">
-          <label for="ba-cost">Стоимость bcrypt:</label>
+          <label for="ba-cost">bcrypt cost:</label>
           <select id="ba-cost" class="text-input">
-            <option value="8">8 — быстро</option>
-            <option value="10" selected>10 — обычный выбор</option>
-            <option value="12">12 — с запасом</option>
-            <option value="14">14 — медленно, заметно</option>
+            <option value="8">8 — fast</option>
+            <option value="10" selected>10 — the usual choice</option>
+            <option value="12">12 — extra margin</option>
+            <option value="14">14 — noticeably slow</option>
           </select>
-          <span>каждый шаг удваивает время подбора и время расчёта</span>
+          <span>each step doubles both the cracking time and the time to compute this</span>
         </div>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Пользователи</span>
-        <p class="ctrl-sub">▸ Имя чистится до <code>A-Z a-z 0-9 . _ @ -</code>, чтобы строка не сломала формат файла.</p>
+        <span class="ctrl-label">Users</span>
+        <p class="ctrl-sub">▸ Usernames are stripped down to <code>A-Z a-z 0-9 . _ @ -</code> so a stray character cannot break the file format.</p>
         <div id="ba-rows"></div>
-        <button id="ba-add" class="action-btn" type="button">+ Добавить пользователя</button>
+        <button id="ba-add" class="action-btn" type="button">+ Add user</button>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Куда кладём</span>
+        <span class="ctrl-label">Destination</span>
         <div class="field-row">
           <label for="ba-secret">Secret:</label>
           <input id="ba-secret" class="text-input" type="text" value="basic-auth" />
@@ -303,7 +303,7 @@
 
       <div class="out-block">
         <div class="out-head">
-          <span class="lbl">kubectl — создать или обновить</span>
+          <span class="lbl">kubectl — create or update</span>
           <button id="ba-copy-cmd" class="action-btn" type="button"><span id="ba-copy-cmd-label">Copy</span></button>
         </div>
         <pre class="out-body" id="ba-out-cmd"></pre>
@@ -311,7 +311,7 @@
 
       <div class="out-block">
         <div class="out-head">
-          <span class="lbl">Secret — для гита</span>
+          <span class="lbl">Secret — for the repo</span>
           <button id="ba-copy-yaml" class="action-btn" type="button"><span id="ba-copy-yaml-label">Copy</span></button>
         </div>
         <pre class="out-body" id="ba-out-yaml"></pre>
@@ -319,46 +319,46 @@
 
       <div class="out-block hidden" id="ba-argo-wrap">
         <div class="out-head">
-          <span class="lbl">ArgoCD — сменить пароль администратора</span>
+          <span class="lbl">ArgoCD — rotate the admin password</span>
           <button id="ba-copy-argo" class="action-btn" type="button"><span id="ba-copy-argo-label">Copy</span></button>
         </div>
         <pre class="out-body" id="ba-out-argo"></pre>
       </div>
 
       <div class="out-block">
-        <div class="out-head"><span class="lbl">то же самое в терминале</span></div>
+        <div class="out-head"><span class="lbl">the same thing in a terminal</span></div>
         <pre class="out-body" id="ba-cli"></pre>
       </div>
 
       <p class="foot-note">
-        Значения берутся в одинарные кавычки не для красоты: bcrypt и apr1 содержат <code>$</code>, и в двойных кавычках bash попробует раскрыть <code>$2a</code> как переменную. Ещё одна мина — переводы строк: Envoy отвергает <code>.htpasswd</code> с окончаниями <code>CRLF</code>, при этом SecurityPolicy бодро рапортует <code>Accepted: True</code>, а ошибка видна только в логах Envoy. Здесь строки всегда разделены одним <code>LF</code>.
+        The single quotes in the generated commands are not cosmetic: bcrypt and apr1 hashes contain <code>$</code>, and inside double quotes bash would try to expand <code>$2a</code> as a variable. The other landmine is line endings — Envoy rejects a <code>.htpasswd</code> with <code>CRLF</code> endings while the SecurityPolicy cheerfully reports <code>Accepted: True</code>, leaving the real error visible only in the Envoy logs. Everything here is separated by a single <code>LF</code>.
       </p>
     </section>
 
     <!-- ============ 04 · KUBERNETES ============ -->
     <section class="pwd-card panel-tool hidden" id="panel-kubernetes" data-panel="kubernetes">
       <p class="tool-intro">
-        Собрать <code>Secret</code> из пар ключ-значение и разобрать его обратно. Плюс разбор JWT — включая токены сервис-аккаунтов, которые обычно смотрят на посторонних сайтах вроде jwt.io.
+        Build a <code>Secret</code> from key/value pairs, and take one apart again. Plus a JWT inspector — including service account tokens, which people habitually paste into third-party sites such as jwt.io.
       </p>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Собрать Secret</span>
+        <span class="ctrl-label">Build a Secret</span>
         <div class="field-row">
-          <label for="k8s-name">Имя:</label>
+          <label for="k8s-name">Name:</label>
           <input id="k8s-name" class="text-input" type="text" value="my-secret" />
           <label for="k8s-ns">Namespace:</label>
           <input id="k8s-ns" class="text-input" type="text" value="default" />
         </div>
         <div class="field-row">
-          <label class="check"><input type="checkbox" id="k8s-mode-stringdata" /><span class="main">Отдать как stringData</span><span class="meta">без base64, кубер закодирует сам</span></label>
+          <label class="check"><input type="checkbox" id="k8s-mode-stringdata" /><span class="main">Emit as stringData</span><span class="meta">no base64, the API server encodes it</span></label>
         </div>
         <div id="k8s-kv"></div>
-        <button id="k8s-add-kv" class="action-btn" type="button">+ Добавить ключ</button>
+        <button id="k8s-add-kv" class="action-btn" type="button">+ Add key</button>
       </div>
 
       <div class="out-block">
         <div class="out-head">
-          <span class="lbl">манифест</span>
+          <span class="lbl">manifest</span>
           <button id="k8s-copy-yaml" class="action-btn" type="button"><span id="k8s-copy-yaml-label">Copy</span></button>
         </div>
         <pre class="out-body" id="k8s-out-yaml"></pre>
@@ -373,21 +373,21 @@
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Разобрать Secret</span>
-        <p class="ctrl-sub">▸ Вставь вывод <code>kubectl get secret … -o yaml</code> целиком — или просто одну строку base64. Разбираются блоки <code>data</code> и <code>stringData</code>.</p>
+        <span class="ctrl-label">Decode a Secret</span>
+        <p class="ctrl-sub">▸ Paste the whole output of <code>kubectl get secret … -o yaml</code>, or just a single base64 string. Both <code>data</code> and <code>stringData</code> blocks are read.</p>
         <textarea id="k8s-decode-in" class="text-input tall" placeholder="apiVersion: v1&#10;kind: Secret&#10;data:&#10;  password: cGFzc3dvcmQ=" spellcheck="false"></textarea>
         <div class="output-actions">
-          <button id="k8s-decode-clear" class="action-btn" type="button">Очистить</button>
+          <button id="k8s-decode-clear" class="action-btn" type="button">Clear</button>
         </div>
         <div id="k8s-decode-out" aria-live="polite"></div>
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Разобрать JWT</span>
-        <p class="ctrl-sub">▸ Заголовок, содержимое и сроки. Подпись не проверяется — для этого нужен открытый ключ издателя.</p>
+        <span class="ctrl-label">Inspect a JWT</span>
+        <p class="ctrl-sub">▸ Header, claims and lifetime. The signature is not verified — that would require the issuer's public key.</p>
         <textarea id="k8s-jwt-in" class="text-input tall" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50In0.signature" spellcheck="false"></textarea>
         <div class="output-actions">
-          <button id="k8s-jwt-clear" class="action-btn" type="button">Очистить</button>
+          <button id="k8s-jwt-clear" class="action-btn" type="button">Clear</button>
         </div>
         <div id="k8s-jwt-out" aria-live="polite"></div>
       </div>
@@ -396,31 +396,31 @@
     <!-- ============ 05 · HASHES ============ -->
     <section class="pwd-card panel-tool hidden" id="panel-hashes" data-panel="hashes">
       <p class="tool-intro">
-        Контрольные суммы текста или файла. Файл читается локально и никуда не отправляется — <code>connect-src 'none'</code> в CSP это гарантирует независимо от того, веришь ты тексту или нет.
+        Checksums of text or of a file. The file is read locally and never uploaded — <code>connect-src 'none'</code> in the CSP guarantees that whether or not you take this paragraph at its word.
       </p>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Что считаем</span>
+        <span class="ctrl-label">Input</span>
         <div class="seg" id="hash-source">
-          <button class="seg-btn active" type="button" data-value="text">Текст</button>
-          <button class="seg-btn" type="button" data-value="file">Файл</button>
+          <button class="seg-btn active" type="button" data-value="text">Text</button>
+          <button class="seg-btn" type="button" data-value="file">File</button>
         </div>
       </div>
 
       <div class="ctrl-section" id="hash-text-wrap">
-        <textarea id="hash-text" class="text-input tall" placeholder="Текст, от которого нужна контрольная сумма" spellcheck="false"></textarea>
+        <textarea id="hash-text" class="text-input tall" placeholder="Text to checksum" spellcheck="false"></textarea>
       </div>
 
       <div class="ctrl-section hidden" id="hash-file-wrap">
         <div class="drop-zone" id="hash-drop">
-          <b>Перетащи файл сюда</b>
-          или нажми, чтобы выбрать
+          <b>Drop a file here</b>
+          or click to choose one
         </div>
         <input type="file" id="hash-file" class="offscreen" />
       </div>
 
       <div class="ctrl-section">
-        <span class="ctrl-label">Представление</span>
+        <span class="ctrl-label">Encoding</span>
         <div class="seg" id="hash-format">
           <button class="seg-btn active" type="button" data-value="hex">hex</button>
           <button class="seg-btn" type="button" data-value="base64">base64</button>
@@ -433,34 +433,34 @@
     </section>
   </section>
 
-  <!-- ============ ПРИВАТНОСТЬ И КРИПТОГРАФИЯ ============ -->
+  <!-- ============ PRIVACY AND CRYPTOGRAPHY ============ -->
   <section class="block">
     <div class="sec-head">
       <span class="sec-num">01 ·</span>
-      <h2 class="sec-title">Приватность и криптография</h2>
+      <h2 class="sec-title">Privacy &amp; cryptography</h2>
     </div>
 
     <div class="cols-2">
       <div class="panel">
-        <h4>Приватность</h4>
+        <h4>Privacy</h4>
         <ul>
-          <li><strong>Считается в браузере</strong> — в коде страницы нет ни <code>fetch</code>, ни <code>XMLHttpRequest</code>, ни <code>sendBeacon</code>. Открой DevTools на вкладке Network и убедись сам.</li>
-          <li><strong>Запрет на уровне браузера</strong> — заголовок CSP содержит <code>connect-src 'none'</code>. Даже если бы в странице появился сетевой вызов, браузер бы его заблокировал.<span class="why">это единственное утверждение здесь, которое проверяется без чтения кода</span></li>
-          <li><strong>Один внешний запрос всё же есть</strong> — шрифты с Google Fonts. Он происходит при загрузке страницы, до того как ты что-либо ввёл, и никаких твоих данных не содержит. Самохостинг шрифтов в планах.<span class="why">честнее сказать так, чем писать «no network» и умолчать</span></li>
-          <li><strong>Ни аналитики, ни кук</strong> — единственное, что сохраняется, это выбранная тема в <code>localStorage</code>.</li>
-          <li><strong>Логи</strong> — nginx пишет обычный access-log: путь, код ответа, user-agent. Того, что ты вводишь в формы, там нет и быть не может: это никогда не покидает вкладку.</li>
-          <li><strong>Исходники открыты</strong> — <a href="https://github.com/AaronShemtov/pwd-frontend">github.com/AaronShemtov/pwd-frontend</a></li>
+          <li><strong>Computed in the browser</strong> — there is no <code>fetch</code>, no <code>XMLHttpRequest</code> and no <code>sendBeacon</code> anywhere in the page. Open DevTools, watch the Network tab, and check for yourself.</li>
+          <li><strong>Enforced by the browser</strong> — the CSP header carries <code>connect-src 'none'</code>. Even if a network call did appear in the page, the browser would block it.<span class="why">this is the one claim here you can verify without reading any code</span></li>
+          <li><strong>There is exactly one external request</strong> — the fonts from Google Fonts. It happens while the page loads, before you have typed anything, and it carries none of your input. Self-hosting them is on the list.<span class="why">more honest than writing "no network" and quietly omitting this</span></li>
+          <li><strong>No analytics, no cookies</strong> — the only thing stored is your theme choice in <code>localStorage</code>.</li>
+          <li><strong>Logs</strong> — nginx keeps an ordinary access log: path, status, user agent. What you type into the forms is not in it and cannot be: it never leaves the tab.</li>
+          <li><strong>Source is public</strong> — <a href="https://github.com/AaronShemtov/pwd-frontend">github.com/AaronShemtov/pwd-frontend</a></li>
         </ul>
       </div>
       <div class="panel">
-        <h4>Криптография</h4>
+        <h4>Cryptography</h4>
         <ul>
-          <li><strong>CSPRNG</strong> — случайность берётся из <code>window.crypto.getRandomValues()</code>, за которым стоит системный источник энтропии.<span class="why">никогда не Math.random — это обычный ГПСЧ, предсказуемый после нескольких выборок</span></li>
-          <li><strong>Равномерность</strong> — индекс в алфавите выбирается отбраковкой значений выше последней полной кратности.<span class="why">random % N смещён всякий раз, когда N не делит 2³² нацело</span></li>
-          <li><strong>bcrypt</strong> — своя реализация, без внешних зависимостей. Константы Blowfish не вписаны по памяти, а выведены из шестнадцатеричного разложения числа π, как в оригинальной статье.<span class="why">сверено с эталонной реализацией, включая UTF-8 и границу в 72 байта</span></li>
-          <li><strong>apr1</strong> — тысяча проходов MD5 с солью, ровно как в Apache. Сверено с passlib.</li>
-          <li><strong>SHA-1 и SHA-2</strong> — из WebCrypto, то есть нативный код браузера.</li>
-          <li><strong>Энтропия</strong> — считается как log₂(размер алфавита) × длина, то есть теоретический максимум для равномерной случайности.</li>
+          <li><strong>CSPRNG</strong> — randomness comes from <code>window.crypto.getRandomValues()</code>, backed by the operating system entropy pool.<span class="why">never Math.random — that is a plain PRNG, predictable after a handful of samples</span></li>
+          <li><strong>Uniform distribution</strong> — the index into the alphabet is drawn by rejecting any value above the last whole multiple.<span class="why">random % N is biased whenever N does not divide 2³² evenly</span></li>
+          <li><strong>bcrypt</strong> — implemented here, with no external dependency. The Blowfish constants are not typed from memory: they are derived from the hexadecimal expansion of π, exactly as in the original paper.<span class="why">cross-checked against a reference implementation, including UTF-8 and the 72-byte boundary</span></li>
+          <li><strong>apr1</strong> — a thousand salted MD5 rounds, the same dance Apache does. Cross-checked against passlib.</li>
+          <li><strong>SHA-1 and SHA-2</strong> — from WebCrypto, meaning native browser code.</li>
+          <li><strong>Entropy</strong> — computed as log₂(alphabet size) × length, the theoretical maximum for uniform randomness.</li>
         </ul>
       </div>
     </div>
@@ -468,11 +468,11 @@
 
   <footer class="foot">
     <div>
-      <span class="tag">всё считается в твоём браузере.</span>
-      <a href="https://infra.1ms.my/">архитектура платформы →</a>
+      <span class="tag">everything is computed in your browser.</span>
+      <a href="https://infra.1ms.my/">see the architecture →</a>
     </div>
     <div>
-      <a href="https://github.com/AaronShemtov/pwd-frontend">исходники</a>
+      <a href="https://github.com/AaronShemtov/pwd-frontend">source</a>
     </div>
   </footer>
 

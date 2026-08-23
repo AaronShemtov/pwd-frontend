@@ -1,8 +1,8 @@
-/* Случайные байты, UUID и ULID.
+/* Random bytes, UUID and ULID.
  *
- * Это то, что обычно добывают через `openssl rand`. Под каждым выводом
- * показана эквивалентная команда — чтобы страницей можно было
- * пользоваться как шпаргалкой, а не только как генератором.
+ * This is what people normally reach for `openssl rand` to get. Each
+ * output carries the equivalent command underneath, so the page doubles
+ * as a cheat sheet rather than being only a generator.
  */
 (function (global) {
   'use strict';
@@ -20,7 +20,7 @@
   function cliFor(format, n) {
     if (format === 'hex') return 'openssl rand -hex ' + n;
     if (format === 'base64') return 'openssl rand -base64 ' + n;
-    // base64url отдельной команды не имеет — правим вывод на месте
+    // base64url has no dedicated flag — the output is rewritten in place
     return 'openssl rand -base64 ' + n + " | tr '+/' '-_' | tr -d '='";
   }
 
@@ -31,8 +31,8 @@
     }
     cli.textContent = cliFor(state.format, state.bytes);
     var bits = state.bytes * 8;
-    U.$('tok-meta').textContent = state.bytes + ' байт · ' + bits + ' бит энтропии' +
-      (bits < 128 ? ' — для секретов долгого хранения бери от 32 байт' : '');
+    U.$('tok-meta').textContent = state.bytes + ' bytes · ' + bits + ' bits of entropy' +
+      (bits < 128 ? ' — use 32 bytes or more for long-lived secrets' : '');
   }
 
   /* ---------- UUID v4 ---------- */
@@ -40,8 +40,8 @@
   function uuidv4() {
     if (global.crypto.randomUUID) return global.crypto.randomUUID();
     var b = U.randomBytes(16);
-    b[6] = (b[6] & 0x0f) | 0x40; // версия 4
-    b[8] = (b[8] & 0x3f) | 0x80; // вариант RFC 4122
+    b[6] = (b[6] & 0x0f) | 0x40; // version 4
+    b[8] = (b[8] & 0x3f) | 0x80; // RFC 4122 variant
     var h = U.toHex(b);
     return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' +
            h.slice(16, 20) + '-' + h.slice(20);
@@ -49,8 +49,8 @@
 
   /* ---------- ULID ---------- */
 
-  // 48 бит времени в миллисекундах + 80 бит случайности, всё это
-  // в base32 Крокфорда. В отличие от UUID сортируется по времени.
+  // 48 bits of millisecond timestamp plus 80 random bits, in Crockford
+  // base32. Unlike a UUID, a list of these sorts by creation time.
   var CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
   function ulid() {
@@ -74,8 +74,8 @@
       idOut.appendChild(U.el('div', 'pwd-row', kind === 'ulid' ? ulid() : uuidv4()));
     }
     U.$('tok-id-cli').textContent = kind === 'ulid'
-      ? '# у ULID стандартной утилиты нет — обычно берут библиотеку'
-      : 'uuidgen        # или: cat /proc/sys/kernel/random/uuid';
+      ? '# ULID has no standard CLI — people usually pull in a library'
+      : 'uuidgen        # or: cat /proc/sys/kernel/random/uuid';
   }
 
   function init() {

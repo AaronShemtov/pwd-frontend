@@ -1,12 +1,12 @@
-/* htpasswd для basic auth.
+/* htpasswd for basic auth.
  *
- * Три формата, потому что их требуют разные потребители:
- *   {SHA}   — Envoy и Envoy Gateway, другого они не понимают
- *   $2a$    — bcrypt, его хочет ArgoCD в поле admin.password
- *   $apr1$  — Apache MD5, его понимают nginx и Traefik
+ * Three formats, because three different consumers demand them:
+ *   {SHA}   — Envoy and Envoy Gateway, which understand nothing else
+ *   $2a$    — bcrypt, what ArgoCD expects in admin.password
+ *   $apr1$  — Apache MD5, understood by nginx and Traefik
  *
- * Все хеши считаются здесь же: SHA-1 через WebCrypto, bcrypt и apr1 —
- * своим кодом в bcrypt.js и md5.js.
+ * Every hash is computed here: SHA-1 through WebCrypto, bcrypt and apr1
+ * from the local code in bcrypt.js and md5.js.
  */
 (function (global) {
   'use strict';
@@ -15,19 +15,19 @@
     sha1: {
       title: '{SHA} — Envoy',
       cli: 'htpasswd -nbs USER PASSWORD',
-      note: 'Единственный формат, который понимает Envoy. Это SHA-1 без соли: против перебора он слабый, но выбора у Envoy пока нет — поддержка bcrypt в фильтре basic_auth до сих пор в открытых задачах. Компенсируй длиной пароля.',
+      note: 'The only format Envoy understands. Unsalted SHA-1 is weak against brute force, but Envoy offers no alternative — bcrypt support in the basic_auth filter is still an open issue. Compensate with password length.',
       strength: 'weak'
     },
     bcrypt: {
       title: '$2a$ — bcrypt',
       cli: 'htpasswd -nbBC 10 USER PASSWORD',
-      note: 'Соль плюс настраиваемая стоимость. Именно это ждёт ArgoCD в admin.password. Учти: bcrypt использует только первые 72 байта пароля, остальное молча отбрасывается.',
+      note: 'Salt plus a tunable cost factor. This is exactly what ArgoCD expects in admin.password. Note that bcrypt uses only the first 72 bytes of the password and silently discards the rest.',
       strength: 'strong'
     },
     apr1: {
       title: '$apr1$ — Apache MD5',
       cli: 'htpasswd -nb USER PASSWORD',
-      note: 'Формат htpasswd по умолчанию, понимают nginx и Traefik. Соль есть, но внутри MD5 — заметно слабее bcrypt. Бери, только если потребитель не умеет иначе.',
+      note: 'The htpasswd default, understood by nginx and Traefik. It is salted, but MD5 underneath makes it noticeably weaker than bcrypt. Pick it only when the consumer accepts nothing else.',
       strength: 'medium'
     }
   };
@@ -54,13 +54,13 @@
 
     var u = U.el('input', 'text-input ba-user');
     u.type = 'text'; u.placeholder = 'admin'; u.value = user || '';
-    u.setAttribute('aria-label', 'Имя пользователя');
+    u.setAttribute('aria-label', 'Username');
 
     var p = U.el('input', 'text-input ba-pass');
-    p.type = 'text'; p.placeholder = 'пароль'; p.value = pass || '';
-    p.setAttribute('aria-label', 'Пароль');
+    p.type = 'text'; p.placeholder = 'password'; p.value = pass || '';
+    p.setAttribute('aria-label', 'Password');
 
-    var gen = U.el('button', 'action-btn ba-gen', 'Сгенерировать');
+    var gen = U.el('button', 'action-btn ba-gen', 'Generate');
     gen.type = 'button';
     gen.addEventListener('click', function () {
       p.value = randomPassword(24);
@@ -69,7 +69,7 @@
 
     var del = U.el('button', 'action-btn ba-del', '×');
     del.type = 'button';
-    del.setAttribute('aria-label', 'Удалить строку');
+    del.setAttribute('aria-label', 'Remove row');
     del.addEventListener('click', function () {
       if (U.$$('.ba-row', rowsBox).length <= 1) return;
       rowsBox.removeChild(row);
@@ -102,8 +102,8 @@
     });
   }
 
-  // Экранирование в shell: bcrypt и apr1 содержат $, который в двойных
-  // кавычках bash попытается раскрыть как переменную. Поэтому одинарные.
+  // Shell quoting: bcrypt and apr1 hashes contain $, which bash would try
+  // to expand inside double quotes. Hence single quotes throughout.
   function shellQuote(value) {
     if (value.indexOf('\n') >= 0) {
       return "$'" + value.replace(/\n/g, '\\n') + "'";
@@ -114,15 +114,15 @@
   function recompute() {
     var list = rows().filter(function (r) { return r.user && r.pass; });
     if (!list.length) {
-      outHtpasswd.textContent = '# заполни имя пользователя и пароль';
+      outHtpasswd.textContent = '# fill in a username and a password';
       outCmd.textContent = '';
       outYaml.textContent = '';
       argoWrap.classList.add('hidden');
       return;
     }
 
-    outHtpasswd.textContent = 'считаю…';
-    // bcrypt намеренно медленный, поэтому отдаём браузеру шанс перерисоваться.
+    outHtpasswd.textContent = 'computing…';
+    // bcrypt is deliberately slow, so let the browser repaint first.
     setTimeout(function () {
       Promise.all(list.map(function (r) {
         return hashOne(r.pass).then(function (h) { return r.user + ':' + h; });
@@ -151,7 +151,7 @@
         if (format === 'bcrypt') {
           argoWrap.classList.remove('hidden');
           argoBox.textContent =
-            '# первая строка списка, для admin.password в argocd-secret\n' +
+            '# first row of the list, for admin.password in argocd-secret\n' +
             'kubectl -n argocd patch secret argocd-secret -p \\\n' +
             '  \'{"stringData": {"admin.password": "' + lines[0].split(':').slice(1).join(':') + '",\n' +
             '                   "admin.passwordMtime": "\'$(date +%FT%T%Z)\'"}}\'';

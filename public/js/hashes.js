@@ -1,8 +1,8 @@
-/* Контрольные суммы текста и файлов.
+/* Checksums of text and of files.
  *
- * SHA-* берутся из WebCrypto. MD5 в браузере не поддерживается ни одним
- * движком, поэтому используется своя реализация из md5.js — она нужна
- * ровно для сверки со старыми контрольными суммами, но не для паролей.
+ * SHA-* come from WebCrypto. No browser engine exposes MD5, so the local
+ * implementation in md5.js is used instead — it exists to check against
+ * legacy checksums, never for passwords.
  */
 (function (global) {
   'use strict';
@@ -45,7 +45,7 @@
     if (lastLabel) box.appendChild(U.el('p', 'ctrl-sub', '▸ ' + lastLabel));
 
     var warn = U.el('p', 'ctrl-sub note-weak');
-    warn.textContent = 'MD5 и SHA-1 годятся только для сверки с готовыми суммами. Для подписи и для паролей они не подходят.';
+    warn.textContent = 'MD5 and SHA-1 are for verifying published checksums only. Do not use them for signatures or passwords.';
     box.appendChild(warn);
   }
 
@@ -53,7 +53,7 @@
     var t = U.$('hash-text').value;
     if (!t) { lastDigests = null; lastLabel = ''; render(); return; }
     var bytes = U.utf8Encode(t);
-    lastLabel = 'вход: текст, ' + U.humanBytes(bytes.length) + ' в UTF-8';
+    lastLabel = 'input: text, ' + U.humanBytes(bytes.length) + ' as UTF-8';
     computeAll(bytes).then(function (r) { lastDigests = r; render(); });
   }
 
@@ -61,14 +61,14 @@
     if (!file) return;
     var box = U.$('hash-out');
     box.innerHTML = '';
-    box.appendChild(U.el('p', 'ctrl-sub', 'читаю ' + file.name + ' (' + U.humanBytes(file.size) + ')…'));
+    box.appendChild(U.el('p', 'ctrl-sub', 'reading ' + file.name + ' (' + U.humanBytes(file.size) + ')…'));
     var reader = new FileReader();
     reader.onload = function () {
       var bytes = new Uint8Array(reader.result);
-      lastLabel = 'вход: файл ' + file.name + ', ' + U.humanBytes(bytes.length);
+      lastLabel = 'input: file ' + file.name + ', ' + U.humanBytes(bytes.length);
       computeAll(bytes).then(function (r) { lastDigests = r; render(); });
     };
-    reader.onerror = function () { U.setError(box, 'Файл не читается.'); };
+    reader.onerror = function () { U.setError(box, 'Could not read the file.'); };
     reader.readAsArrayBuffer(file);
   }
 

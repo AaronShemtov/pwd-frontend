@@ -1,13 +1,13 @@
-/* Kubernetes: сборка Secret, разбор Secret и разбор JWT.
+/* Kubernetes: build a Secret, decode a Secret, inspect a JWT.
  *
- * Всё считается в браузере. Ни один вставленный сюда Secret или токен
- * никуда не уходит — в странице нет ни одного сетевого вызова, и CSP
- * с директивой connect-src 'none' запрещает их на уровне браузера.
+ * Everything is computed in the browser. No Secret or token pasted here
+ * goes anywhere — the page contains no network call at all, and the CSP
+ * directive connect-src 'none' forbids them at the browser level.
  */
 (function (global) {
   'use strict';
 
-  /* ================= Сборка Secret ================= */
+  /* ================= Secret builder ================= */
 
   var kvBox, secOutYaml, secOutCmd;
 
@@ -24,13 +24,13 @@
     var row = U.el('div', 'kv-row');
     var k = U.el('input', 'text-input kv-key');
     k.type = 'text'; k.placeholder = 'DB_PASSWORD'; k.value = key || '';
-    k.setAttribute('aria-label', 'Ключ');
+    k.setAttribute('aria-label', 'Key');
     var v = U.el('textarea', 'text-input kv-val');
-    v.rows = 1; v.placeholder = 'значение'; v.value = val || '';
-    v.setAttribute('aria-label', 'Значение');
+    v.rows = 1; v.placeholder = 'value'; v.value = val || '';
+    v.setAttribute('aria-label', 'Value');
     var del = U.el('button', 'action-btn kv-del', '×');
     del.type = 'button';
-    del.setAttribute('aria-label', 'Удалить строку');
+    del.setAttribute('aria-label', 'Remove row');
     del.addEventListener('click', function () {
       if (U.$$('.kv-row', kvBox).length <= 1) return;
       kvBox.removeChild(row); buildSecret();
@@ -52,7 +52,7 @@
     var mode = U.$('k8s-mode-stringdata').checked ? 'stringData' : 'data';
 
     if (!list.length) {
-      secOutYaml.textContent = '# добавь хотя бы один ключ';
+      secOutYaml.textContent = '# add at least one key';
       secOutCmd.textContent = '';
       return;
     }
@@ -79,11 +79,11 @@
     secOutCmd.textContent = cmd;
   }
 
-  /* ================= Разбор Secret ================= */
+  /* ================= Secret decoder ================= */
 
-  // Небольшой разборщик, рассчитанный на вывод `kubectl get secret -o yaml`.
-  // Полноценный YAML он не заменяет и не пытается: берёт блок data или
-  // stringData и читает из него пары ключ-значение.
+  // A small parser aimed at the output of `kubectl get secret -o yaml`.
+  // It is not a YAML implementation and does not pretend to be: it finds
+  // the data or stringData block and reads key/value pairs out of it.
   function parseSecretBlock(text) {
     var lines = text.replace(/\r\n?/g, '\n').split('\n');
     var result = [], mode = null, baseIndent = -1, i;
@@ -133,11 +133,11 @@
 
     var entries = parseSecretBlock(text);
 
-    // Ничего похожего на Secret не нашли — считаем ввод голым base64.
+    // Nothing resembling a Secret was found — treat the input as raw base64.
     if (!entries.length) {
       var single = text.trim();
       if (!U.looksLikeBase64(single)) {
-        U.setError(box, 'Не похоже ни на Secret, ни на строку base64.');
+        U.setError(box, 'This looks like neither a Secret nor a base64 string.');
         return;
       }
       try {
@@ -145,10 +145,10 @@
         var pre = U.el('pre', 'plain-out');
         pre.textContent = U.isPrintable(bytes)
           ? U.utf8Decode(bytes)
-          : 'бинарные данные, ' + U.humanBytes(bytes.length) + '\n' + U.toHex(bytes).slice(0, 128) + '…';
+          : 'binary data, ' + U.humanBytes(bytes.length) + '\n' + U.toHex(bytes).slice(0, 128) + '…';
         box.appendChild(pre);
       } catch (e) {
-        U.setError(box, 'Строка не декодируется как base64.');
+        U.setError(box, 'That string does not decode as base64.');
       }
       return;
     }
@@ -156,7 +156,7 @@
     var table = U.el('table', 'slo-table');
     var thead = U.el('thead');
     var htr = U.el('tr');
-    ['Ключ', 'Размер', 'Значение'].forEach(function (h) { htr.appendChild(U.el('th', null, h)); });
+    ['Key', 'Size', 'Value'].forEach(function (h) { htr.appendChild(U.el('th', null, h)); });
     thead.appendChild(htr); table.appendChild(thead);
     var tbody = U.el('tbody');
 
@@ -169,9 +169,9 @@
           var b = U.bytesFromB64(e.raw);
           size = U.humanBytes(b.length);
           value = U.isPrintable(b) ? U.utf8Decode(b)
-            : '⟨бинарные данные⟩ ' + U.toHex(b).slice(0, 48) + '…';
+            : '⟨binary data⟩ ' + U.toHex(b).slice(0, 48) + '…';
         } catch (err) {
-          size = '—'; value = '⟨не декодируется как base64⟩';
+          size = '—'; value = '⟨does not decode as base64⟩';
         }
       } else {
         size = U.humanBytes(U.utf8Encode(e.raw).length);
@@ -187,13 +187,13 @@
     box.appendChild(table);
 
     var hint = U.el('p', 'ctrl-sub',
-      '▸ Найдено ключей: ' + entries.length +
-      (entries[0].encoded ? ' (из блока data, значения раскодированы из base64)'
-                          : ' (из блока stringData, значения уже открытым текстом)'));
+      '▸ Keys found: ' + entries.length +
+      (entries[0].encoded ? ' (from the data block, values decoded from base64)'
+                          : ' (from the stringData block, values already in plain text)'));
     box.appendChild(hint);
   }
 
-  /* ================= Разбор JWT ================= */
+  /* ================= JWT inspector ================= */
 
   function fmtDate(sec) {
     var d = new Date(sec * 1000);
@@ -204,11 +204,11 @@
     var diff = sec * 1000 - Date.now();
     var abs = Math.abs(diff);
     var unit, n;
-    if (abs < 60000) { n = Math.round(abs / 1000); unit = 'сек'; }
-    else if (abs < 3600000) { n = Math.round(abs / 60000); unit = 'мин'; }
-    else if (abs < 86400000) { n = Math.round(abs / 3600000); unit = 'ч'; }
-    else { n = Math.round(abs / 86400000); unit = 'дн'; }
-    return diff >= 0 ? 'через ' + n + ' ' + unit : n + ' ' + unit + ' назад';
+    if (abs < 60000) { n = Math.round(abs / 1000); unit = 'sec'; }
+    else if (abs < 3600000) { n = Math.round(abs / 60000); unit = 'min'; }
+    else if (abs < 86400000) { n = Math.round(abs / 3600000); unit = 'hr'; }
+    else { n = Math.round(abs / 86400000); unit = 'days'; }
+    return diff >= 0 ? 'in ' + n + ' ' + unit : n + ' ' + unit + ' ago';
   }
 
   function decodeJwt() {
@@ -219,7 +219,7 @@
 
     var parts = raw.replace(/^Bearer\s+/i, '').split('.');
     if (parts.length < 2) {
-      U.setError(box, 'Это не JWT: не нашлось трёх частей, разделённых точкой.');
+      U.setError(box, 'Not a JWT: could not find dot-separated parts.');
       return;
     }
 
@@ -228,7 +228,7 @@
       header = JSON.parse(U.utf8Decode(U.bytesFromB64(parts[0])));
       payload = JSON.parse(U.utf8Decode(U.bytesFromB64(parts[1])));
     } catch (e) {
-      U.setError(box, 'Части токена не разбираются как base64url + JSON.');
+      U.setError(box, 'The token parts do not decode as base64url + JSON.');
       return;
     }
 
@@ -247,18 +247,18 @@
     box.appendChild(section('payload', payload));
 
     var facts = [];
-    if (header.alg) facts.push(['Алгоритм', header.alg]);
-    if (payload.iss) facts.push(['Издатель (iss)', payload.iss]);
-    if (payload.sub) facts.push(['Субъект (sub)', payload.sub]);
-    if (payload.aud) facts.push(['Аудитория (aud)', [].concat(payload.aud).join(', ')]);
-    if (payload.iat) facts.push(['Выпущен (iat)', fmtDate(payload.iat) + ' · ' + relative(payload.iat)]);
-    if (payload.nbf) facts.push(['Действует с (nbf)', fmtDate(payload.nbf) + ' · ' + relative(payload.nbf)]);
+    if (header.alg) facts.push(['Algorithm', header.alg]);
+    if (payload.iss) facts.push(['Issuer (iss)', payload.iss]);
+    if (payload.sub) facts.push(['Subject (sub)', payload.sub]);
+    if (payload.aud) facts.push(['Audience (aud)', [].concat(payload.aud).join(', ')]);
+    if (payload.iat) facts.push(['Issued at (iat)', fmtDate(payload.iat) + ' · ' + relative(payload.iat)]);
+    if (payload.nbf) facts.push(['Not before (nbf)', fmtDate(payload.nbf) + ' · ' + relative(payload.nbf)]);
     if (payload.exp) {
       var expired = payload.exp * 1000 < Date.now();
-      facts.push([expired ? 'Истёк (exp)' : 'Истекает (exp)',
+      facts.push([expired ? 'Expired (exp)' : 'Expires (exp)',
                   fmtDate(payload.exp) + ' · ' + relative(payload.exp), expired ? 'bad' : 'good']);
     } else {
-      facts.push(['Срок жизни', 'поле exp отсутствует — токен бессрочный', 'warn']);
+      facts.push(['Lifetime', 'no exp claim — this token never expires', 'warn']);
     }
     var k8s = payload['kubernetes.io'];
     if (k8s) {
@@ -281,10 +281,10 @@
     box.appendChild(table);
 
     box.appendChild(U.el('p', 'ctrl-sub',
-      '▸ Подпись не проверяется — для этого нужен открытый ключ издателя. Здесь только разбор содержимого.'));
+      '▸ The signature is not verified — that would require the issuer public key. This is content inspection only.'));
   }
 
-  /* ================= Инициализация ================= */
+  /* ================= Initialisation ================= */
 
   function init() {
     kvBox = U.$('k8s-kv');

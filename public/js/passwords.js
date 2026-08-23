@@ -1,8 +1,8 @@
-/* Генератор паролей.
+/* Password generator.
  *
- * Источник случайности — window.crypto.getRandomValues(). Индекс в
- * алфавите выбирается отбраковкой, а не остатком от деления, поэтому
- * распределение равномерное.
+ * Randomness comes from window.crypto.getRandomValues(). The index into
+ * the alphabet is drawn by rejection sampling rather than a modulo, so
+ * the distribution stays uniform.
  */
 (function (global) {
   'use strict';
@@ -17,43 +17,43 @@
   var AMBIG = '0O1lI|';
   var DBUF = '\'"\\;$`&';
 
-  /* Наборы под конкретные места, где пароль потом окажется.
-   * Смысл не в «сложнее», а в том, чтобы пароль не пришлось экранировать
-   * и он не сломал конфиг при вставке. */
+  /* Presets aimed at wherever the password actually ends up. The point is
+   * not "stronger" — it is that the password should need no escaping and
+   * should not break the config it is pasted into. */
   var PRESETS = {
     balanced: {
       title: 'Balanced', len: 20,
       upper: true, lower: true, digit: true, symbol: true,
-      note: 'Все четыре класса. Годится, когда пароль живёт в менеджере паролей и руками его никто не вводит.'
+      note: 'All four classes. Fine when the password lives in a password manager and nobody ever types it by hand.'
     },
     shell: {
       title: 'Shell-safe', len: 24,
       upper: true, lower: true, digit: true, symbol: true,
       symbolSet: '-_=+.,:@%^',
-      note: 'Без символов, которые интерпретирует bash. Можно вставлять в команду без кавычек и без экранирования.'
+      note: 'No characters that bash would interpret. Safe to paste straight into a command without quoting or escaping.'
     },
     yaml: {
       title: 'YAML-safe', len: 24,
       upper: true, lower: true, digit: true, symbol: true,
       symbolSet: '-_=+.()/',
-      note: 'Не начинается с символа и не содержит того, что заставляет YAML требовать кавычки. Для values.yaml и stringData.'
+      note: 'Avoids the characters that force YAML to demand quoting. For values.yaml and stringData.'
     },
     url: {
       title: 'URL-safe', len: 32,
       upper: true, lower: true, digit: true, symbol: true,
       symbolSet: '-._~',
-      note: 'Только незарезервированные символы из RFC 3986. Переживает попадание в connection string или query-параметр.'
+      note: 'Only the unreserved characters from RFC 3986. Survives being dropped into a connection string or a query parameter.'
     },
     db: {
       title: 'DB-safe', len: 24,
       upper: true, lower: true, digit: true, symbol: true,
       noDb: true, noAmbig: true,
-      note: 'Без кавычек, обратного слеша, точки с запятой и амперсанда. Для паролей СУБД и строк подключения.'
+      note: 'No quotes, backslash, semicolon or ampersand. For database passwords and connection strings.'
     },
     pin: {
       title: 'PIN', len: 8,
       upper: false, lower: false, digit: true, symbol: false,
-      note: 'Только цифры. Для сейфов, домофонов и всего, где клавиатура цифровая.'
+      note: 'Digits only. For safes, keypads and anything else with a numeric keyboard.'
     }
   };
 
@@ -82,9 +82,9 @@
     return o.join('');
   }
 
-  // Если класс выбран, но случайно не попал в строку — подставляем его
-  // в произвольную позицию. Формально это чуть снижает энтропию, зато
-  // пароль проходит проверки вида «минимум одна цифра».
+  // If a class is enabled but happened not to appear, drop one of its
+  // characters into a random position. This costs a sliver of entropy but
+  // makes the password pass "must contain a digit" style validators.
   function enforceClasses(pwd, charset) {
     var classes = [];
     function present(src) {
@@ -122,7 +122,7 @@
     var r = rating(bits);
     entropyFill.style.width = r.pct + '%';
     entropyFill.className = 'entropy-fill ' + r.cls;
-    entropyBits.textContent = bits.toFixed(0) + ' bits of entropy · ' + csize + ' символов в алфавите';
+    entropyBits.textContent = bits.toFixed(0) + ' bits of entropy · alphabet of ' + csize;
     entropyLabel.textContent = r.lbl;
     entropyLabel.className = 'label ' + r.cls;
   }
@@ -130,7 +130,7 @@
   function generate() {
     var charset = buildCharset();
     if (!charset.length) {
-      U.setError(out, 'Выбери хотя бы один класс символов.');
+      U.setError(out, 'Enable at least one character class.');
       entropyFill.style.width = '0%';
       entropyFill.className = 'entropy-fill';
       entropyBits.textContent = '— bits of entropy';
@@ -176,7 +176,7 @@
   function clearPreset() {
     presetBtns.forEach(function (b) { b.classList.remove('active'); });
     state.symbolSet = null;
-    presetNote.textContent = 'Свои настройки.';
+    presetNote.textContent = 'Custom settings.';
   }
 
   function init() {

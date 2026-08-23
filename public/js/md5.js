@@ -1,11 +1,11 @@
-/* MD5 и apr1 ($apr1$) — для htpasswd в формате Apache/nginx/Traefik.
+/* MD5 and apr1 ($apr1$) — for htpasswd in the Apache/nginx/Traefik format.
  *
- * MD5 давно сломан как хеш общего назначения и здесь присутствует только
- * потому, что этого требует формат apr1, который до сих пор понимают
- * nginx и Traefik. Для новых конфигураций выбирай bcrypt.
+ * MD5 has long been broken as a general-purpose hash and is present here
+ * only because the apr1 format requires it, and nginx and Traefik still
+ * understand that format. For new configurations, pick bcrypt.
  *
- * Таблица K — это floor(abs(sin(i+1)) * 2^32), как в RFC 1321.
- * Проверено против hashlib и passlib.
+ * The K table is floor(abs(sin(i+1)) * 2^32), as in RFC 1321.
+ * Verified against hashlib and passlib.
  */
 (function (global) {
   'use strict';
@@ -33,8 +33,6 @@
   /* md5(Uint8Array) -> Uint8Array(16) */
   function md5(msg) {
     var origLen = msg.length;
-    var padLen = ((origLen + 8) % 64 < 56 || (origLen + 8) % 64 === 0)
-      ? 0 : 0; // вычисляем ниже явно
     var withOne = origLen + 1;
     var total = withOne + ((56 - withOne % 64) + 64) % 64 + 8;
     var buf = new Uint8Array(total);
@@ -113,22 +111,22 @@
     var saltBytes = enc.encode(salt);
     var magic = enc.encode('$apr1$');
 
-    // Промежуточный хеш: пароль + соль + пароль.
+    // Intermediate digest: password + salt + password.
     var inner = md5(concat([pw, saltBytes, pw]));
 
     var parts = [pw, magic, saltBytes];
     for (var i = pw.length; i > 0; i -= 16) {
       parts.push(inner.subarray(0, i > 16 ? 16 : i));
     }
-    // Разрядка длины пароля: единичный бит даёт нулевой байт,
-    // нулевой — первый байт пароля.
+    // Length-dependent mixing: a set bit contributes a NUL byte,
+    // a clear bit contributes the first byte of the password.
     var zero = new Uint8Array([0]);
     for (i = pw.length; i !== 0; i >>= 1) {
       parts.push((i & 1) ? zero : pw.subarray(0, 1));
     }
     var final = md5(concat(parts));
 
-    // 1000 проходов — то, что делает apr1 медленнее голого MD5.
+    // 1000 rounds — what makes apr1 slower than bare MD5.
     for (i = 0; i < 1000; i++) {
       var p = [];
       if (i & 1) p.push(pw); else p.push(final);

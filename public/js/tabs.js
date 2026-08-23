@@ -1,8 +1,8 @@
-/* Панель вкладок с адресацией через хеш.
+/* Tab bar with hash-based routing.
  *
- * Открытая вкладка попадает в URL (pwd.1ms.my/#kubernetes), поэтому на
- * конкретный инструмент можно дать прямую ссылку. Неизвестный хеш
- * молча откатывается на вкладку по умолчанию.
+ * The open tab is reflected in the URL (pwd.1ms.my/#kubernetes), so a
+ * single tool can be linked directly. An unknown hash silently falls
+ * back to the default tab.
  */
 (function (global) {
   'use strict';

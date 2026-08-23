@@ -1,12 +1,13 @@
-/* bcrypt — реализация для pwd.1ms.my.
+/* bcrypt — local implementation for pwd.1ms.my.
  *
- * Зависимостей нет. Константы Blowfish (18 слов P-массива и 4x256 слов
- * S-боксов) — это шестнадцатеричные цифры дробной части числа Pi, ровно
- * как в оригинальной статье Шнайера. Они лежат ниже одной строкой и
- * разбираются при загрузке: так их видно глазами и можно перепроверить.
+ * No dependencies. The Blowfish constants (18 P-array words and 4x256
+ * S-box words) are the hexadecimal digits of the fractional part of Pi,
+ * exactly as in Schneier's original paper. They sit below as a single
+ * string and are parsed at load time, so they stay readable and can be
+ * checked independently.
  *
- * Проверено против эталонной реализации (python bcrypt) на наборе
- * тестовых векторов, включая пароли длиннее 72 байт и не-ASCII.
+ * Verified against a reference implementation (python bcrypt) over a set
+ * of test vectors, including passwords longer than 72 bytes and non-ASCII.
  */
 (function (global) {
   'use strict';
@@ -28,7 +29,7 @@
     }
   })();
 
-  // Алфавит base64 у bcrypt свой и не совпадает со стандартным.
+  // bcrypt uses its own base64 alphabet, which differs from the standard one.
   var B64 = './ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
   function encodeB64(bytes, len) {
@@ -77,7 +78,7 @@
               new Uint32Array(ORIG_S[2]), new Uint32Array(ORIG_S[3])];
   }
 
-  // Сеть Фейстеля на 16 раундов.
+  // 16-round Feistel network.
   function encipher(st, lr, off) {
     var l = lr[off], r = lr[off + 1], P = st.P;
     var S0 = st.S[0], S1 = st.S[1], S2 = st.S[2], S3 = st.S[3], t;
@@ -93,7 +94,7 @@
     lr[off + 1] = (l ^ P[16]) >>> 0;
   }
 
-  // Читает 4 байта из data по кругу, начиная с offp.
+  // Reads 4 bytes from data, cycling, starting at offp.
   function streamWord(data, offp) {
     var word = 0;
     for (var i = 0; i < 4; i++) {
@@ -118,7 +119,7 @@
     }
   }
 
-  // Тот же проход, но каждый блок дополнительно смешивается с солью.
+  // The same pass, but every block is additionally mixed with the salt.
   function ekskey(st, data, k) {
     var offp = [0], sofp = [0], lr = new Uint32Array(2), i, j;
     for (i = 0; i < 18; i++) st.P[i] = (st.P[i] ^ streamWord(k, offp)) >>> 0;
@@ -138,7 +139,7 @@
     }
   }
 
-  // "OrpheanBeholderScryDoubt" в виде шести 32-битных слов.
+  // "OrpheanBeholderScryDoubt" as six 32-bit words.
   var MAGIC = [0x4f727068, 0x65616e42, 0x65686f6c,
                0x64657253, 0x63727944, 0x6f756274];
 
@@ -165,18 +166,18 @@
 
   function passwordToBytes(password) {
     var raw = new TextEncoder().encode(password);
-    // bcrypt работает с 72 байтами максимум, всё сверх молча отбрасывается.
+    // bcrypt takes 72 bytes at most; anything beyond is silently dropped.
     if (raw.length > 72) raw = raw.slice(0, 72);
     var k = new Uint8Array(raw.length + 1);
     k.set(raw, 0);
-    k[raw.length] = 0; // завершающий ноль — часть ключевого материала
+    k[raw.length] = 0; // the trailing NUL is part of the key material
     return k;
   }
 
   /* hash(password, cost, saltBytes?, prefix?) -> "$2a$10$..." */
   function hash(password, cost, saltBytes, prefix) {
     cost = cost || 10;
-    if (cost < 4 || cost > 16) throw new Error('cost должен быть в диапазоне 4..16');
+    if (cost < 4 || cost > 16) throw new Error('cost must be between 4 and 16');
     prefix = prefix || '2a';
     if (!saltBytes) {
       saltBytes = new Uint8Array(16);
@@ -187,13 +188,13 @@
            encodeB64(saltBytes, 16) + encodeB64(out, 23);
   }
 
-  /* Пересчёт с солью из готового хеша — нужен для самопроверки. */
+  /* Recompute using the salt from an existing hash — used for self-checks. */
   function hashWithSaltString(password, cost, saltB64, prefix) {
     var saltBytes = new Uint8Array(decodeB64(saltB64, 16));
     return hash(password, cost, saltBytes, prefix);
   }
 
-  /* Байты пароля, реально попавшие в расчёт — для предупреждения в UI. */
+  /* Password byte length, so the UI can warn about the 72-byte limit. */
   function effectiveLength(password) {
     return new TextEncoder().encode(password).length;
   }
