@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>pwd — Secrets toolkit for DevOps</title>
+<title>Secrets toolkit for DevOps</title>
 <meta name="description" content="Secrets toolkit for DevOps: passwords, random tokens, htpasswd for Envoy and ArgoCD, Kubernetes Secret builder and decoder, JWT inspector, checksums. Everything is computed in your browser — no secret ever leaves the tab." />
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -27,7 +27,7 @@
         <a href="https://1ms.my/">1ms.my</a>
         <a href="https://cv.1ms.my/">cv</a>
         <a href="https://infra.1ms.my/">platform</a>
-        <a href="https://pwd.1ms.my/" class="current">pwd</a>
+        <a href="https://pwd.1ms.my/" class="current">secrets</a>
       </nav>
       <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme" type="button">
         <svg id="icon-sun" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -48,11 +48,11 @@
       <span>~/aaronshemtov</span><span class="sep">/</span><span>secrets-toolkit</span>
     </div>
 
-    <h1 class="title"><span class="lt">/</span>pwd</h1>
-    <div class="title-tag">window.crypto.getRandomValues(...)<span class="blink"></span></div>
+    <h1 class="title"><span class="lt">/</span>secrets</h1>
+    <div class="title-tag">secrets toolkit for devops<span class="blink"></span></div>
 
     <p class="lede">
-      A <strong>secrets toolkit for DevOps</strong>: passwords and random tokens, <strong>htpasswd for Envoy and ArgoCD</strong>, a Kubernetes <code>Secret</code> builder and decoder, a JWT inspector and checksums. Everything is computed in the browser. There is no <code>fetch</code> anywhere in the page, and the <code>Content-Security-Policy</code> header forbids network calls outright with <code>connect-src 'none'</code> — so the guarantee is enforced by your browser rather than promised in a paragraph.
+      Passwords and random tokens, <strong>htpasswd for Envoy and ArgoCD</strong>, a Kubernetes <code>Secret</code> builder and decoder, a JWT inspector and checksums. Everything is computed in the browser. There is no <code>fetch</code> anywhere in the page, and the <code>Content-Security-Policy</code> header forbids network calls outright with <code>connect-src 'none'</code> — so the guarantee is enforced by your browser rather than promised in a paragraph.
     </p>
 
     <div class="tag-row">
@@ -74,7 +74,7 @@
     <!-- ============ 01 · PASSWORDS ============ -->
     <section class="pwd-card panel-tool" id="panel-passwords" data-panel="passwords">
       <p class="tool-intro">
-        A random password over an alphabet you choose. The index into that alphabet is drawn by <strong>rejection sampling</strong> rather than a modulo, so every character is equally likely and there is no modulo bias.
+        A random password over an alphabet you choose. Randomness comes from <code>window.crypto.getRandomValues()</code>, and the index into that alphabet is drawn by <strong>rejection sampling</strong> rather than a modulo — so every character is equally likely and there is no modulo bias.
       </p>
 
       <div id="pw-output" class="output-block" aria-live="polite"></div>
