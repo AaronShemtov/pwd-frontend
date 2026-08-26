@@ -28,6 +28,10 @@
   word-break: break-all;
 }
 
+.cols-2 {
+  align-items: stretch;
+}
+
 /* ---------- Tab bar ---------- */
 
 /* Styled as a distinct control bar rather than browser-style tab stubs:

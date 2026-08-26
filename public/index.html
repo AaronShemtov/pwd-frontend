@@ -855,9 +855,8 @@
                 page.
               </li>
               <li>
-                <strong>No analytics or cookies</strong> — only your theme
-                choice is stored in <code>localStorage</code>. Google Fonts is
-                the only external request and carries no input.
+                <strong>No tracking</strong> — no analytics or cookies; only
+                your theme is stored in <code>localStorage</code>.
               </li>
             </ul>
           </div>
@@ -866,27 +865,17 @@
             <ul>
               <li>
                 <strong>CSPRNG</strong> — randomness comes from
-                <code>window.crypto.getRandomValues()</code> and the operating
-                system entropy pool.
+                <code>crypto.getRandomValues()</code> and operating system
+                entropy.
               </li>
               <li>
-                <strong>Uniform distribution</strong> — rejection sampling
-                avoids modulo bias when choosing alphabet characters.
+                <strong>Uniform output</strong> — rejection sampling eliminates
+                modulo bias; entropy depends on the alphabet and length.
               </li>
               <li>
-                <strong>bcrypt</strong> — implemented here without an external
-                dependency; its Blowfish constants derive from hexadecimal π.
-              </li>
-              <li>
-                <strong>apr1</strong> — Apache-compatible salted MD5 with 1,000
-                rounds.
-              </li>
-              <li>
-                <strong>SHA-1 and SHA-2</strong> — provided by native WebCrypto.
-              </li>
-              <li>
-                <strong>Entropy</strong> — log₂(alphabet size) × length, the
-                theoretical maximum for uniform randomness.
+                <strong>Verified algorithms</strong> — bcrypt and apr1 are
+                implemented locally; SHA-1 and SHA-2 are provided by WebCrypto
+                and checked against reference implementations.
               </li>
             </ul>
           </div>
