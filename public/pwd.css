@@ -576,6 +576,17 @@ textarea.tall {
   min-width: 96px;
 }
 
+#ba-cost-wrap > #ba-cost {
+  width: min(280px, 100%);
+  min-width: min(150px, 100%);
+  flex: 0 1 280px;
+}
+#ba-cost-wrap > span {
+  min-width: 0;
+  flex: 1 1 220px;
+  overflow-wrap: anywhere;
+}
+
 .custom-len {
   margin-top: 10px;
   display: flex;
