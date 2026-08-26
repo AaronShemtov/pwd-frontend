@@ -846,43 +846,18 @@
             <h4>Privacy</h4>
             <ul>
               <li>
-                <strong>Computed in the browser</strong> — there is no
-                <code>fetch</code>, no <code>XMLHttpRequest</code> and no
-                <code>sendBeacon</code> anywhere in the page. Open DevTools,
-                watch the Network tab, and check for yourself.
+                <strong>Local processing</strong> — everything you enter is
+                computed in your browser and never uploaded.
               </li>
               <li>
-                <strong>Enforced by the browser</strong> — the CSP header
-                carries <code>connect-src 'none'</code>. Even if a network call
-                did appear in the page, the browser would block it.<span
-                  class="why"
-                  >this is the one claim here you can verify without reading any
-                  code</span
-                >
+                <strong>Browser-enforced</strong> — CSP uses
+                <code>connect-src 'none'</code> to block connections from the
+                page.
               </li>
               <li>
-                <strong>There is exactly one external request</strong> — the
-                fonts from Google Fonts. It happens while the page loads, before
-                you have typed anything, and it carries none of your input.
-                Self-hosting them is on the list.<span class="why"
-                  >more honest than writing "no network" and quietly omitting
-                  this</span
-                >
-              </li>
-              <li>
-                <strong>No analytics, no cookies</strong> — the only thing
-                stored is your theme choice in <code>localStorage</code>.
-              </li>
-              <li>
-                <strong>Logs</strong> — nginx keeps an ordinary access log:
-                path, status, user agent. What you type into the forms is not in
-                it and cannot be: it never leaves the tab.
-              </li>
-              <li>
-                <strong>Source is public</strong> —
-                <a href="https://github.com/AaronShemtov/pwd-frontend"
-                  >github.com/AaronShemtov/pwd-frontend</a
-                >
+                <strong>No analytics or cookies</strong> — only your theme
+                choice is stored in <code>localStorage</code>. Google Fonts is
+                the only external request and carries no input.
               </li>
             </ul>
           </div>
@@ -891,40 +866,27 @@
             <ul>
               <li>
                 <strong>CSPRNG</strong> — randomness comes from
-                <code>window.crypto.getRandomValues()</code>, backed by the
-                operating system entropy pool.<span class="why"
-                  >never Math.random — that is a plain PRNG, predictable after a
-                  handful of samples</span
-                >
+                <code>window.crypto.getRandomValues()</code> and the operating
+                system entropy pool.
               </li>
               <li>
-                <strong>Uniform distribution</strong> — the index into the
-                alphabet is drawn by rejecting any value above the last whole
-                multiple.<span class="why"
-                  >random % N is biased whenever N does not divide 2³²
-                  evenly</span
-                >
+                <strong>Uniform distribution</strong> — rejection sampling
+                avoids modulo bias when choosing alphabet characters.
               </li>
               <li>
-                <strong>bcrypt</strong> — implemented here, with no external
-                dependency. The Blowfish constants are not typed from memory:
-                they are derived from the hexadecimal expansion of π, exactly as
-                in the original paper.<span class="why"
-                  >cross-checked against a reference implementation, including
-                  UTF-8 and the 72-byte boundary</span
-                >
+                <strong>bcrypt</strong> — implemented here without an external
+                dependency; its Blowfish constants derive from hexadecimal π.
               </li>
               <li>
-                <strong>apr1</strong> — a thousand salted MD5 rounds, the same
-                dance Apache does. Cross-checked against passlib.
+                <strong>apr1</strong> — Apache-compatible salted MD5 with 1,000
+                rounds.
               </li>
               <li>
-                <strong>SHA-1 and SHA-2</strong> — from WebCrypto, meaning
-                native browser code.
+                <strong>SHA-1 and SHA-2</strong> — provided by native WebCrypto.
               </li>
               <li>
-                <strong>Entropy</strong> — computed as log₂(alphabet size) ×
-                length, the theoretical maximum for uniform randomness.
+                <strong>Entropy</strong> — log₂(alphabet size) × length, the
+                theoretical maximum for uniform randomness.
               </li>
             </ul>
           </div>
