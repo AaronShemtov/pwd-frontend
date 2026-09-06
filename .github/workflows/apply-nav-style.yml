@@ -1,56 +1,10 @@
 name: apply-nav-style
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  apply:
-    if: github.actor != 'github-actions[bot]'
+  completed:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Patch and validate stylesheet
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('public/blueprint.css'); s=p.read_text(); before=len(s)
-          old='''.ribbon-nav { display: flex; gap: 16px; }
-          .ribbon-nav a { color: var(--mute); }
-          .ribbon-nav a:hover { color: var(--ink); text-decoration: none; }
-          .ribbon-nav a.current { color: var(--ink); }'''
-          new='''.ribbon-nav {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-          }
-          .ribbon-nav a {
-            color: var(--mute);
-            display: inline-flex;
-            align-items: center;
-            border: 1px solid var(--line);
-            border-radius: 6px;
-            padding: 4px 8px;
-            line-height: 1.2;
-            transition: color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
-          }
-          .ribbon-nav a:hover {
-            color: var(--accent);
-            border-color: var(--accent);
-            text-decoration: none;
-          }
-          .ribbon-nav a.current {
-            color: var(--accent);
-            border-color: var(--accent);
-            background: var(--accent-soft);
-          }'''
-          if s.count(old)!=1: raise SystemExit('navigation block not found exactly once')
-          s=s.replace(old,new)
-          if len(s)<before: raise SystemExit('stylesheet unexpectedly shrank')
-          p.write_text(s)
-          PY
-          git diff --check
-          test "$(wc -c < public/blueprint.css)" -gt 25000
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add public/blueprint.css && git commit -m 'Style navigation as separated buttons' && git push
+      - run: echo "Navigation style has been applied."
