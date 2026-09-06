@@ -1,4 +1,4 @@
-/* bcrypt — local implementation for pwd.1ms.my.
+/* bcrypt — local implementation for secrets.1ms.my.
  *
  * No dependencies. The Blowfish constants (18 P-array words and 4x256
  * S-box words) are the hexadecimal digits of the fractional part of Pi,
