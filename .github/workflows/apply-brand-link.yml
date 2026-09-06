@@ -1,10 +1,35 @@
-name: apply-brand-link
+name: apply-disabled-nav-links
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  completed:
+  apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Author link has been applied."
+      - uses: actions/checkout@v4
+      - name: Disable unreleased navigation links
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/index.html')
+          s = p.read_text()
+          replacements = {
+              '<a href="https://agentic-ai.1ms.my/">Agentic AI architecture</a>': '<a>Agentic AI architecture</a>',
+              '<a href="https://ai-sre-agent.1ms.my/">AI SRE agent</a>': '<a>AI SRE agent</a>',
+          }
+          for old, new in replacements.items():
+              if s.count(old) != 1:
+                  raise SystemExit(f'expected one navigation item: {old}; found {s.count(old)}')
+              s = s.replace(old, new)
+          p.write_text(s)
+          PY
+          git diff --check
+          test "$(git diff --numstat -- public/index.html)" = $'2\t2\tpublic/index.html'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/index.html
+          git commit -m 'Temporarily disable unreleased navigation links'
+          git push
