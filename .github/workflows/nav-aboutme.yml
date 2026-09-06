@@ -1,0 +1,24 @@
+name: one-time-aboutme-nav
+on:
+  push:
+    branches: [nav-aboutme]
+permissions:
+  contents: write
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: nav-aboutme}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('public/index.html'); t=p.read_text();
+          if 'https://cv.1ms.my/' not in t or '>cv</a>' not in t: raise SystemExit('expected navigation not found')
+          p.write_text(t.replace('https://cv.1ms.my/','https://aboutme.1ms.my/').replace('>cv</a>','>about me</a>'))
+          PY
+          rm .github/workflows/nav-aboutme.yml
+          git config user.name 'GitHub Actions'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A && git commit -m 'docs: rename CV navigation to About Me' && git push origin HEAD:nav-aboutme
