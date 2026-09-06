@@ -1,0 +1,31 @@
+name: apply-brand-link
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch and validate author link
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/index.html')
+          s = p.read_text()
+          old = '<span class="brand">Aaron Shemtov</span>'
+          new = '<a class="brand" href="https://aboutme.1ms.my/">Aaron Shemtov</a>'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one brand span, found {s.count(old)}')
+          p.write_text(s.replace(old, new))
+          PY
+          git diff --check
+          test "$(git diff --numstat -- public/index.html)" = $'1\t1\tpublic/index.html'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/index.html
+          git commit -m 'Link author name to about page'
+          git push
