@@ -1,6 +1,6 @@
 /* Tab bar with hash-based routing.
  *
- * The open tab is reflected in the URL (pwd.1ms.my/#kubernetes), so a
+ * The open tab is reflected in the URL (secrets.1ms.my/#kubernetes), so a
  * single tool can be linked directly. An unknown hash silently falls
  * back to the default tab.
  */

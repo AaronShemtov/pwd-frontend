@@ -1,6 +1,6 @@
 # pwd-frontend
 
-**Secrets toolkit for DevOps** — live at [pwd.1ms.my](https://pwd.1ms.my/).
+**Secrets toolkit for DevOps** — live at [secrets.1ms.my](https://secrets.1ms.my/).
 
 The secrets chores that come up daily when working with Kubernetes, in one page. Everything is computed in the browser: the page makes no network call, and that is not a promise in a paragraph — it is enforced by the browser, because the CSP header carries `connect-src 'none'`.
 
@@ -91,8 +91,8 @@ The markup contains no inline script, no inline style and no attribute event han
 The open tab is reflected in the URL, so a specific tool can be shared directly:
 
 ```
-https://pwd.1ms.my/#basicauth
-https://pwd.1ms.my/#kubernetes
+https://secrets.1ms.my/#basicauth
+https://secrets.1ms.my/#kubernetes
 ```
 
 ## Local preview
