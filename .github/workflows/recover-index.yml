@@ -1,0 +1,40 @@
+name: Recover truncated index
+on:
+  push:
+    paths:
+      - .github/workflows/recover-index.yml
+permissions:
+  contents: write
+jobs:
+  recover:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore and patch
+        env:
+          BAD: 4217091573756a556dd75a30f037b567903ffdb1
+        run: |
+          git show "${BAD}^:public/index.html" > public/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/index.html')
+          s = p.read_text()
+          old = '''<span class="brand"
+            >Aaron Shemtov
+            <span class="mute-sep">· secrets toolkit for DevOps</span></span
+          >'''
+          new = '<span class="brand">Aaron Shemtov</span>'
+          assert s.count(old) == 1
+          s = s.replace(old, new)
+          assert s.rstrip().endswith('</html>') and 'class="current"' in s
+          p.write_text(s)
+          PY
+          rm .github/workflows/recover-index.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/index.html .github/workflows/recover-index.yml
+          git commit -m "Restore index and remove duplicate ribbon subtitle"
+          git push
