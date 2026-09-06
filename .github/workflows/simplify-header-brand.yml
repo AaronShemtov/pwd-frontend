@@ -1,0 +1,29 @@
+name: simplify-header-brand
+on:
+  push:
+    branches: [feat/simplify-header-brand]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: feat/simplify-header-brand}
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('public/index.html'); s=p.read_text()
+          replacement='''        <div class="ribbon-left">
+          <span class="brand">Aaron Shemtov</span>
+        </div>'''
+          s,n=re.subn(r'        <div class="ribbon-left">.*?        </div>', replacement, s, count=1, flags=re.S)
+          assert n == 1
+          p.write_text(s)
+          PY
+          rm .github/workflows/simplify-header-brand.yml
+          git config user.name 'GitHub Actions'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A && git commit -m 'style: simplify header brand' && git push origin HEAD:feat/simplify-header-brand
