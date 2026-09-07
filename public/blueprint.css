@@ -558,3 +558,18 @@ html[data-theme="dark"] .btn-primary { color: var(--bg); }
   .acc-tag { display: none; }
   .acc-body { padding-left: 4px; }
 }
+
+/* Center ribbon labels without moving the existing header blocks. */
+.ribbon .ribbon-left {
+  justify-content: center;
+}
+.ribbon .ribbon-left .brand {
+  white-space: nowrap;
+  text-align: center;
+}
+.ribbon .ribbon-nav > a {
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.2;
+}
