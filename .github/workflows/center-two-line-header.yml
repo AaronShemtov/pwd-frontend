@@ -1,0 +1,9 @@
+name: center-two-line-header
+on:
+  push:
+    branches: [fix/center-two-line-header]
+permissions:
+  contents: write
+jobs:
+  apply:
+    uses: AaronShemtov/cv-frontend/.github/workflows/center-two-line-header.yml@7837ba96c8f6c15b29baf4530253af4f6863ea97
